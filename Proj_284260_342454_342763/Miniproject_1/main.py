@@ -14,6 +14,20 @@ def main():
     train_input, train_target = torch.load('train_data.pkl')
     test_input, test_target = torch.load('val_data.pkl')
 
+    # Select a subset to speed up computations
+    train_size = 1000
+    train_input = train_input[:train_size]
+    train_target = train_target[:train_size]
+    test_input = test_input[:train_size]
+    test_target = test_target[:train_size]
+
+    # Convert the data into float type
+    train_input = train_input.float()
+    train_target = train_target.float()
+    test_input = test_input.float()
+    test_target = test_target.float()
+
+    
     print(f'Training data of size {train_input.shape}')
 
     # Defining and training the model
