@@ -7,12 +7,12 @@ class Model(nn.Module):
         ## instantiate model + optimizer + loss function + any other stuff you need
         super().__init__()
         
-        self.conv1 = nn.Conv2d(32, 1, kernel_size = 4,  stride = 1, padding = (4 - 1) // 2)
-        self.convT1 = nn.ConvTranspose2d(32, 1, kernel_size=4, stride=1) 
+        self.conv1 = nn.Conv2d(3, 3, kernel_size = 5,  stride = 1)
+        self.convT1 = nn.ConvTranspose2d(3, 3, kernel_size=5, stride=1) 
 
 
-        criterion = nn.CrossEntropyLoss()
-        optimizer = torch.optim.SGD(self.parameters(), lr=0.1)
+        self.criterion = nn.MSELoss()
+        self.optimizer = torch.optim.SGD(self.parameters(), lr=0.1)
         
 
     def load_pretrained_model(self ) -> None:
@@ -24,11 +24,14 @@ class Model(nn.Module):
         # : train˙target : tensor of size (N , C , H , W ) containing another noisy version of the
         # same images , which only differs from the input by their noise.
         batch_size = 100
-        for epoch in range(100):
-            for batch_input in train_input.split(batch_size):
+        epochs = 5
+        for epoch in range(epochs):
+            print(f'Epoch {epoch}/{epochs-1}')
+            for batch_input, batch_target in zip(train_input.split(batch_size), train_target.split(batch_size)):
                 output = self.predict(batch_input)
+                loss = self.criterion(output, batch_target)
                 self.optimizer.zero_grad()
-                self.criterion.backward()
+                loss.backward()
                 self.optimizer.step()
                 
     
