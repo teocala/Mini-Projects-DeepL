@@ -2,7 +2,7 @@ import torch
 from torch import nn
 
 ### For mini-project 1
-class Model():
+class Model(nn.Module):
     def __init__(self) -> None:
         ## instantiate model + optimizer + loss function + any other stuff you need
         super().__init__()
@@ -23,8 +23,9 @@ class Model():
         # : train˙input : tensor of size (N , C , H , W ) containing a noisy version of the images.
         # : train˙target : tensor of size (N , C , H , W ) containing another noisy version of the
         # same images , which only differs from the input by their noise.
+        batch_size = 100
         for epoch in range(100):
-            for batch_input in train_input.split(batch_size=100):
+            for batch_input in train_input.split(batch_size):
                 output = self.predict(batch_input)
                 self.optimizer.zero_grad()
                 self.criterion.backward()
