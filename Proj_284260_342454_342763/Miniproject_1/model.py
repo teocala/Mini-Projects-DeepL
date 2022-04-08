@@ -30,9 +30,9 @@ class Model(nn.Module):
             nn.ConvTranspose2d(64,32,kernel_size=5,stride=1), # N , 32, 14, 14
             nn.Upsample(scale_factor=2,mode = 'bilinear', align_corners=True), # N, 32, 28, 28
             nn.ReLU(),
-            nn.ConvTranspose2d(32,16,kernel_size=5,stride=1, padding=2), # N, 16, 28, 28
+            nn.ConvTranspose2d(32,32,kernel_size=5,stride=1, padding=2), # N, 32, 28, 28
             nn.ReLU(),
-            nn.ConvTranspose2d(16,3,kernel_size=5,stride=1) # N, 3, 32, 32
+            nn.ConvTranspose2d(32,3,kernel_size=5,stride=1) # N, 3, 32, 32
         )
 
         self.criterion = nn.MSELoss()
