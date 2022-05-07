@@ -65,17 +65,10 @@ class Conv2(Module):
         self.bias = empty((self.output_channels))
         
     
-    def compute_output_shape(self, *input):
+    def compute_output_shape(self, *input): # for the time being, not used
         H = (input.shape[2] - (self.kernel_size-1)-1)/2 + 1
         W = (input.shape[3] - (self.kernel_size-1)-1)/2 + 1
         return [H.floor(), W.floor()]
-    
-    def inverse_unfold(self, *input): 
-        #from https://pytorch.org/docs/stable/generated/torch.nn.Fold.html
-        input_ones = torch.empty(input.shape, dtype=input.dtype)
-        input_ones.fill_(1.0)
-        divisor = fold(unfold(input_ones))
-        return divisor.inverse()@fold(input)
     
     def forward(self, *input): # see end of projdescription
         unfolded = unfold(input, self.kernel_size)
@@ -83,10 +76,11 @@ class Conv2(Module):
         self.x = self.weight @ unfolded + self.bias 
         
     def backward(self, *gradwrtoutput):
-        dldux =  (self.weight).T.dot(gradwrtoutput) #derivative w.r.t. unfold(x)
+        gradux =  (self.weight).T.dot(gradwrtoutput) #derivative w.r.t. unfold(x)
         self.gradoutput = gradwrtoutput
-        self.gradx = self.inverse_unfold(dldux) #derivative w.r.t. x
-    
+        self.gradx = fold(gradux, input.shape[2:4],self.kernel_size) #derivative w.r.t. x
+        # fold is not exactly the inverse of unfold but does exactly the weight sharing for the computation of the gradient
+        
     def param(self):
         dldw = self.gradoutput.dot(self.input.T)
         dldb = self.gradoutput
