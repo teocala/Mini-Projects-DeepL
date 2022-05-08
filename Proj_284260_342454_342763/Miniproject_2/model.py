@@ -135,7 +135,7 @@ class Upsampling1(Module):
             for j in range(input.shape[3]):
                 i_output = i * self.scale_factor
                 j_output = j * self.scale_factor
-                grad[:,:,i,j] = grad_conv[:,:,i_output:i_output+self.scale_factor,j_output:j_output+self.scale_factor].sum()  ,"""WARNING!!! HERE USE SUM!!"""
+                grad[:,:,i,j] = grad_conv[:,:,i_output:i_output+self.scale_factor,j_output:j_output+self.scale_factor].sum()
 
         self.gradx = grad
         return self.gradx
