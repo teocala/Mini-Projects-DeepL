@@ -10,8 +10,8 @@ from torch.nn.functional import fold, unfold
 # fold/unfold to combine tensor blocks/batches (see end of projdescription)
 
 
-import torch.set_grad_enabled
-torch.set_grad_enabled(False)
+# import torch.set_grad_enabled
+# torch.set_grad_enabled(False)
 
 
 # REFERENCE STRUCTURE:
@@ -27,7 +27,7 @@ Sequential (Conv (stride 2),
 """
 
 
-# ABSTRACT MODULE CLASSE (required)
+# ABSTRACT MODULE CLASS (required)
 class Module (object):
     def forward (self, *input):
         raise NotImplementedError
@@ -74,13 +74,15 @@ class Conv2(Module):
         unfolded = unfold(input, self.kernel_size)
         self.input = input
         self.x = self.weight @ unfolded + self.bias 
+        return self.x   
         
     def backward(self, *gradwrtoutput):
         gradux =  (self.weight).T.dot(gradwrtoutput) #derivative w.r.t. unfold(x)
         self.gradoutput = gradwrtoutput
         self.gradx = fold(gradux, input.shape[2:4],self.kernel_size) #derivative w.r.t. x
         # fold is not exactly the inverse of unfold but does exactly the weight sharing for the computation of the gradient
-        
+        return self.gradx
+
     def param(self):
         dldw = self.gradoutput.dot(self.input.T)
         dldb = self.gradoutput
@@ -88,7 +90,60 @@ class Conv2(Module):
     
 
 #class ReLU2(Module):
-#class Upsampling1(Module):  
+
+class Upsampling1(Module):  
+    def __init__(self) -> None:
+        super().__init__()
+        
+        self.x = empty()
+        self.gradx = empty()
+        self.input = empty()
+        
+        # NN
+        self.scale_factor = 2
+        self.NN_output_shape = []
+
+        # Convolution
+        self.conv = Conv2()
+
+    def forward (self, *input):
+        self.input = input
+        # Compute the NN output shape from the input size and the scale factor
+        self.NN_output_shape = [input.shape[0]] + [input.shape[1]] + [self.scale_factor * dim for dim in input.shape[2:]]
+        NN_interp = empty(self.NN_output_shape)
+
+        # Apply NN interpolation
+        for i in range(self.scale_factor):
+            for j in range(self.scale_factor):
+                NN_interp[:,:,i::self.scale_factor,j::self.scale_factor] = input
+
+        # Apply conv
+        self.x = self.conv.forward(NN_interp)
+        
+        return self.x
+
+
+    def backward (self , *gradwrtoutput):
+        # Get gradient of convolution 
+        self.gradoutput = gradwrtoutput
+        grad_conv = self.conv.backward(gradwrtoutput)
+
+        # Since we used NN interpolation, we have to sum up the derivatives
+        # in the gradient of the convolution on each block
+        grad = empty(self.input.shape)
+        for i in range(input.shape[2]):
+            for j in range(input.shape[3]):
+                i_output = i * self.scale_factor
+                j_output = j * self.scale_factor
+                grad[:,:,i,j] = self.x[:,:,i_output:i_output+self.scale_factor,j_output:j_output+self.scale_factor].sum()  ,"""WARNING!!! HERE USE SUM!!"""
+
+        self.gradx = grad
+        return self.gradx
+
+
+    def param (self):
+        # No parameters in the upsampling (or could return the ones associated to the Conv)
+        return []
 
     
 class ReLU3(Module):
