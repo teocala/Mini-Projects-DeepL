@@ -97,6 +97,7 @@ class NearestNeighbor(Module):
         super().__init__()
         
         self.x = empty()
+        self.NN_interp = empty()
         self.gradx = empty()
         self.input = empty()
         
@@ -109,20 +110,17 @@ class NearestNeighbor(Module):
         self.input = input
         # Compute the NN output shape from the input size and the scale factor
         self.NN_output_shape = [input.shape[0], input.shape[1], [self.scale_factor * dim for dim in input.shape[2:]]]
-        NN_interp = empty(self.NN_output_shape)
+        self.NN_interp = empty(self.NN_output_shape)
 
         # Apply NN interpolation
         for i in range(self.scale_factor):
             for j in range(self.scale_factor):
-                NN_interp[:,:,i::self.scale_factor,j::self.scale_factor] = input
+                self.NN_interp[:,:,i::self.scale_factor,j::self.scale_factor] = input
         
         return self.NN_interp
 
 
     def backward (self , *gradwrtoutput):
-        # Get gradient of convolution 
-        self.gradoutput = gradwrtoutput
-
         # Since we used NN interpolation, we have to sum up the derivatives
         # in the gradient of the convolution on each block
         grad = empty(self.input.shape)
