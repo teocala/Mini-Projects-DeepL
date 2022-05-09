@@ -84,14 +84,16 @@ class Conv2d(Module):
     def param(self):
         dldw = self.gradoutput.dot(self.input.T)
         dldb = self.gradoutput
-        return [cat(self.weight,self.bias), cat(dldw, dldb)]
+        
+        # list of zip to create list of tuples
+        return list(zip(cat(self.weight,self.bias), cat(dldw, dldb)))
     
 
 
 
 
-class NearestUpsampling(Module):  
-    def __init__(self, scale_factor, input_channels, output_channels, kernel_size, stride) -> None:
+class NearestNeighbor(Module):  
+    def __init__(self, scale_factor) -> None:
         super().__init__()
         
         self.x = empty()
@@ -102,8 +104,6 @@ class NearestUpsampling(Module):
         self.scale_factor = scale_factor
         self.NN_output_shape = []
 
-        # Convolution
-        self.conv = Conv2d(input_channels, output_channels, kernel_size, stride)
 
     def forward (self, *input):
         self.input = input
@@ -115,17 +115,13 @@ class NearestUpsampling(Module):
         for i in range(self.scale_factor):
             for j in range(self.scale_factor):
                 NN_interp[:,:,i::self.scale_factor,j::self.scale_factor] = input
-
-        # Apply conv
-        self.x = self.conv.forward(NN_interp)
         
-        return self.x
+        return self.NN_interp
 
 
     def backward (self , *gradwrtoutput):
         # Get gradient of convolution 
         self.gradoutput = gradwrtoutput
-        grad_conv = self.conv.backward(gradwrtoutput)
 
         # Since we used NN interpolation, we have to sum up the derivatives
         # in the gradient of the convolution on each block
@@ -134,37 +130,31 @@ class NearestUpsampling(Module):
             for j in range(input.shape[3]):
                 i_output = i * self.scale_factor
                 j_output = j * self.scale_factor
-                grad[:,:,i,j] = grad_conv[:,:,i_output:i_output+self.scale_factor,j_output:j_output+self.scale_factor].sum()
+                grad[:,:,i,j] = gradwrtoutput[:,:,i_output:i_output+self.scale_factor,j_output:j_output+self.scale_factor].sum()
 
         self.gradx = grad
         return self.gradx
-
-
-    def param (self):
-        # Only parameters associated to conv2d
-        return self.conv.param()
     
     
     
-
     
 class ReLU(Module):
     
     def __init__(self) -> None:
         super().__init__()
-        self.x_input = empty()
-        self.x_output = empty()
+        self.input = empty()
+        self.output = empty()
         self.gradx = empty()
     
     def forward(self, *input):
         output = empty(input.shape)
         output[input>0] = input
-        self.x_input = input
-        self.x_output = output
+        self.input = input
+        self.output = output
         return output
         
     def backward(self, *gradwrtoutput):
-        self.gradx =  gradwrtoutput.multiply(self.sigmaprime(self.x))
+        self.gradx =  gradwrtoutput.multiply(self.sigmaprime(self.input))
         return self.gradx
         
     def sigmaprime(*input):
@@ -181,17 +171,17 @@ class Sigmoid(Module):
     
     def __init__(self) -> None:
         super().__init__()
-        self.x_input = empty()
-        self.x_output = empty()
+        self.input = empty()
+        self.output = empty()
         self.gradx = empty()
     
     def forward(self, *input):
-        self.x_input = input
-        self.x_output = self.sigma(input)
-        return self.x_output
+        self.input = input
+        self.output = self.sigma(input)
+        return self.output
         
     def backward(self, *gradwrtoutput):
-        self.gradx =  gradwrtoutput.multiply(self.sigmaprime(self.x))
+        self.gradx =  gradwrtoutput.multiply(self.sigmaprime(self.input))
         return self.gradx
     
     def sigma(self, *input):
@@ -199,4 +189,80 @@ class Sigmoid(Module):
     
     def sigmaprime(self, *input):
         return self.sigma(input)*(1-self.sigma(input))
+    
+    
+    
+class MSE(Module):
+    
+    def __init__(self) -> None:
+        super().__init__()
+        self.input = empty()
+        self.target = empty()
+        self.gradx = empty()
+    
+    def forward(self, *input, target):
+        self.input = input
+        self.target = target
+        return pow(input-target,2).sum()
+        
+    def backward(self):
+        self.gradx = 2*(self.input-self.target)
+        return self.gradx
+    
+    
+    
+    
+    
+class SGD(Module):
+    def __init__(self, *parameters, lr) -> None:
+        super().__init__()
+        self.parameters = parameters
+        self.lr = lr
+    
+    def step(self, *parameters):
+        idx = torch.empty(1)
+        idx.random_(0,len(parameters))
+        parameters = parameters - self.lr * parameters[idx.item()][1]
+        
+
+
+
+class Sequential(Module):
+    
+    def __init__(self, *args) -> None:
+        super().__init__()
+        self.args = args
+        self.input = empty()
+        self.output = empty()
+        self.gradx = empty()
+    
+    def forward(self, *input):
+        self.input = input
+        output = input.copy()
+        for module in self.args:
+            output = module.forward(output)
+        self.output = output
+        return output
+        
+    def backward(self, *gradwrtoutput):
+        gradx = gradwrtoutput.copy()
+        for module in self.args:
+            gradx = module.backward(gradx)
+        self.gradx = gradx
+        return gradx
+    
+    def param(self):
+        param = []
+        for module in self.args:
+            param = param.append(module.param())
+        return param
+    
+    
+    
+    
+class NearestUpsampling(Sequential):  
+    def __init__(self, scale_factor, input_channels, output_channels, kernel_size, stride) -> None:
+        super().__init__(NearestNeighbor(scale_factor), Conv2d(input_channels, output_channels, kernel_size, stride))
+        
+        
         
