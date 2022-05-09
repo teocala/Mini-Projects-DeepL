@@ -10,8 +10,9 @@ from torch.nn.functional import fold, unfold
 # fold/unfold to combine tensor blocks/batches (see end of projdescription)
 
 
-# import torch.set_grad_enabled
-# torch.set_grad_enabled(False)
+# the code should work without autograd, don't touch it
+import torch.set_grad_enabled
+torch.set_grad_enabled(False)
 
 
 # REFERENCE STRUCTURE:
@@ -40,13 +41,10 @@ class Module (object):
 
 # IMPLEMENTATION OF MODULES:
     
-
-#class Conv1(Module):
-#class ReLU1(Module):
     
-class Conv2(Module):
+class Conv2d(Module):
     
-    def __init__(self) -> None:
+    def __init__(self, input_channels, output_channels, kernel_size, stride) -> None:
         super().__init__()
         
         self.x = empty()
@@ -54,10 +52,10 @@ class Conv2(Module):
         self.input = empty()
         self.gradoutput = empty()
         
-        self.input_channels = 64 #parametri a caso, da fixare dopo
-        self.output_channels = 64
-        self.kernel_size = 5
-        self.stride = 2
+        self.input_channels = input_channels
+        self.output_channels = output_channels
+        self.kernel_size = kernel_size
+        self.stride = stride
         # default: padding = 0, dilation=1
         
         # from https://pytorch.org/docs/stable/generated/torch.nn.Conv2d.html
@@ -89,10 +87,11 @@ class Conv2(Module):
         return [cat(self.weight,self.bias), cat(dldw, dldb)]
     
 
-#class ReLU2(Module):
 
-class Upsampling1(Module):  
-    def __init__(self) -> None:
+
+
+class NearestUpsampling(Module):  
+    def __init__(self, scale_factor, input_channels, output_channels, kernel_size, stride) -> None:
         super().__init__()
         
         self.x = empty()
@@ -100,16 +99,16 @@ class Upsampling1(Module):
         self.input = empty()
         
         # NN
-        self.scale_factor = 2
+        self.scale_factor = scale_factor
         self.NN_output_shape = []
 
         # Convolution
-        self.conv = Conv2()
+        self.conv = Conv2d(input_channels, output_channels, kernel_size, stride)
 
     def forward (self, *input):
         self.input = input
         # Compute the NN output shape from the input size and the scale factor
-        self.NN_output_shape = [input.shape[0]] + [input.shape[1]] + [self.scale_factor * dim for dim in input.shape[2:]]
+        self.NN_output_shape = [input.shape[0], input.shape[1], [self.scale_factor * dim for dim in input.shape[2:]]]
         NN_interp = empty(self.NN_output_shape)
 
         # Apply NN interpolation
@@ -142,11 +141,14 @@ class Upsampling1(Module):
 
 
     def param (self):
-        # No parameters in the upsampling (or could return the ones associated to the Conv)
-        return []
+        # Only parameters associated to conv2d
+        return self.conv.param()
+    
+    
+    
 
     
-class ReLU3(Module):
+class ReLU(Module):
     
     def __init__(self) -> None:
         super().__init__()
@@ -170,9 +172,9 @@ class ReLU3(Module):
         output.fill_(0.0)
         output[input>0] = 1.0
         return output
-    
-    
-#class Upsampling2(Module):   
+     
+        
+     
     
     
 class Sigmoid(Module):
