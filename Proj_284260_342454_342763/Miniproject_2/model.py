@@ -2,7 +2,7 @@
 
 from torch import empty, cat, arange
 from torch.nn.functional import fold, unfold
-import modulus.py
+from modules import *
 # ATTENTION: DO NOT ADD ANY OTHER LIBRARY (see rules)
 
 # torch.empty for an empty tensor
