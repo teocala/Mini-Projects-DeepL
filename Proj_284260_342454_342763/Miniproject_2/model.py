@@ -37,14 +37,14 @@ class Model () :
         self.model = Sequential(# N, 3, 32, 32
             Conv2d(input_channels = 3, output_channels = 32, kernel_size = (5,5), stride = 2), # N, 32, 14, 14
             ReLU(),
-            Conv2d(input_channels = 32, output_channels = 32, kernel_size = (5,5), stride = 2), # N, 32, 5, 5
+            Conv2d(input_channels = 32, output_channels = 32, kernel_size = (3,3), stride = 2), # N, 32, 5, 5
             ReLU(),
-            NearestUpsampling(scale_factor = 2, input_channels = 32, output_channels = 32, kernel_size = (5,5), stride = 2), #  N, 32, 3, 3
+            NearestUpsampling(scale_factor = 5, input_channels = 32, output_channels = 32, kernel_size = (5,5), stride = 2), #  N, 32, 3, 3
             ReLU(),
-            NearestUpsampling(scale_factor = 2, input_channels = 32, output_channels = 3, kernel_size = (5,5), stride = 2), 
+            NearestUpsampling(scale_factor = 5, input_channels = 32, output_channels = 3, kernel_size = (3,3), stride = 2), 
             Sigmoid()
         )
-        self.loss = MSE()
+        self.criterion = MSE()
         self.optimizer = SGD(self.model.param(), lr=0.001)
 
     def load_pretrained_model ( self ) -> None :
@@ -61,15 +61,15 @@ class Model () :
         total_loss = 0
 
         for epoch in range(epochs):
-            print(f'Epoch {epoch}/{epochs-1} Training Loss {total_loss}')
             total_loss = 0
             for batch_input, batch_target in zip(train_input.split(batch_size), train_target.split(batch_size)):
                 output = self.predict(batch_input)
-                loss = self.loss.forward(output, batch_target)
+                loss = self.criterion.forward(output, batch_target)
                 total_loss += loss
-                gradx = loss.backward() #loss w.r.t output of net
+                gradx = self.criterion.backward() #loss w.r.t output of net
                 self.gradx = self.model.backward(gradx) #loss w.r.t input of net
                 self.optimizer.step()
+            print(f'Epoch {epoch}/{epochs-1} Training Loss {total_loss}')
 
 
     def predict ( self , test_input ) -> Tensor:

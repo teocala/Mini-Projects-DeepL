@@ -48,6 +48,7 @@ class Conv2d(Module):
         super().__init__()
         
         self.x = Tensor()
+        self.x_shape = ()
         self.gradx = Tensor()
         self.input = Tensor()
         self.gradoutput = Tensor()
@@ -77,14 +78,18 @@ class Conv2d(Module):
 
         H, W = self.compute_output_shape(input[0])
 
+        self.x_shape = self.x.shape
+        
         self.x = self.x.view(self.input.shape[0], self.output_channels, H, W)
         return self.x   
         
     def backward(self, *gradwrtoutput):
-        gradux =  (self.weight).T.dot(gradwrtoutput[0]) #derivative w.r.t. unfold(x)
+        gradux =  (self.weight.view(self.output_channels, -1)).T @ gradwrtoutput[0].view(self.x_shape) #derivative w.r.t. unfold(x)
         self.gradoutput = gradwrtoutput[0]
-        self.gradx = fold(gradux, self.input.shape[2:4], kernel_size=self.kernel_size, stride=self.stride) #derivative w.r.t. x
+
+        folded = fold(gradux, self.input.shape[2:], kernel_size=self.kernel_size, stride=self.stride) #derivative w.r.t. x
         # fold is not exactly the inverse of unfold but does exactly the weight sharing for the computation of the gradient
+        self.gradx = folded
         return self.gradx
 
     def param(self):
@@ -137,7 +142,7 @@ class NearestNeighbor(Module):
             for j in range(self.input.shape[3]):
                 i_output = i * self.scale_factor
                 j_output = j * self.scale_factor
-                grad[:,:,i,j] = gradwrtoutput[:,:,i_output:i_output+self.scale_factor,j_output:j_output+self.scale_factor].sum()
+                grad[:,:,i,j] = gradwrtoutput[0][:,:,i_output:i_output+self.scale_factor,j_output:j_output+self.scale_factor].sum()
 
         self.gradx = grad
         return self.gradx
@@ -161,7 +166,7 @@ class ReLU(Module):
         return output
         
     def backward(self, *gradwrtoutput):
-        self.gradx =  gradwrtoutput.multiply(self.sigmaprime(self.input))
+        self.gradx =  gradwrtoutput[0].multiply(self.sigmaprime(self.input))
         return self.gradx
         
     def sigmaprime(self, *input):
@@ -189,7 +194,7 @@ class Sigmoid(Module):
         return self.output
         
     def backward(self, *gradwrtoutput):
-        self.gradx =  gradwrtoutput.multiply(self.sigmaprime(self.input))
+        self.gradx =  gradwrtoutput[0].multiply(self.sigmaprime(self.input))
         return self.gradx
     
     def sigma(self, *input):
@@ -204,17 +209,17 @@ class MSE(Module):
     
     def __init__(self) -> None:
         super().__init__()
-        self.input = Tensor()
+        self.x = Tensor()
         self.target = Tensor()
         self.gradx = Tensor()
     
     def forward(self, *input):
-        self.input = input[0]
         self.target = input[1]
+        self.x = input[0]
         return pow(input[0]-input[1],2).sum()
         
     def backward(self):
-        self.gradx = 2*(self.input-self.target)
+        self.gradx = 2*(self.x-self.target)
         return self.gradx
     
     
@@ -229,8 +234,10 @@ class SGD(Module):
     
     def step(self):
         idx = empty(1)
-        idx.random_(0,len(self.parameters))
-        self.parameters -= self.lr * self.parameters[idx.item()][1]
+        idx.random_(0,len(self.parameters)) # PROBLEM: len = 1
+        print(len(self.parameters))
+        print(idx.item())
+        self.parameters -= self.lr * self.parameters[int(idx.item())][1]
         
 
 
@@ -253,8 +260,9 @@ class Sequential(Module):
         return self.output
         
     def backward(self, *gradwrtoutput):
-        self.gradx.copy_(gradwrtoutput)
-        for module in self.args:
+        self.gradx = empty(gradwrtoutput[0].shape)
+        self.gradx.copy_(gradwrtoutput[0])
+        for module in self.args[::-1]:
             self.gradx = module.backward(self.gradx)
         return self.gradx
 
