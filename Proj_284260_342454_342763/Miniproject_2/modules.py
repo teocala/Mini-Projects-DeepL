@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from torch import empty, cat, arange
+from torch import empty, cat, arange, Tensor
 from torch.nn.functional import fold, unfold
 # ATTENTION: DO NOT ADD ANY OTHER LIBRARY (see rules)
 
@@ -11,8 +11,8 @@ from torch.nn.functional import fold, unfold
 
 
 # the code should work without autograd, don't touch it
-import torch.set_grad_enabled
-torch.set_grad_enabled(False)
+from torch import set_grad_enabled
+set_grad_enabled(False)
 
 
 # REFERENCE STRUCTURE:
@@ -47,10 +47,10 @@ class Conv2d(Module):
     def __init__(self, input_channels, output_channels, kernel_size, stride) -> None:
         super().__init__()
         
-        self.x = empty()
-        self.gradx = empty()
-        self.input = empty()
-        self.gradoutput = empty()
+        self.x = Tensor()
+        self.gradx = Tensor()
+        self.input = Tensor()
+        self.gradoutput = Tensor()
         
         self.input_channels = input_channels
         self.output_channels = output_channels
@@ -59,34 +59,43 @@ class Conv2d(Module):
         # default: padding = 0, dilation=1
         
         # from https://pytorch.org/docs/stable/generated/torch.nn.Conv2d.html
-        self.weight = empty((self.output_channels, self.input_channels, self.kernel_size, self.kernel_size))
+        self.weight = empty((self.output_channels, self.input_channels, self.kernel_size[0], self.kernel_size[1]))
         self.bias = empty((self.output_channels))
+        self.dldw = empty((self.output_channels, self.input_channels, self.kernel_size[0], self.kernel_size[1]))
+        self.dldb = empty((self.output_channels))
         
     
     def compute_output_shape(self, *input): # for the time being, not used
-        H = (input.shape[2] - (self.kernel_size-1)-1)/2 + 1
-        W = (input.shape[3] - (self.kernel_size-1)-1)/2 + 1
-        return [H.floor(), W.floor()]
+        H = (input[0].shape[2] - (self.kernel_size[0]-1)-1)/self.stride + 1
+        W = (input[0].shape[3] - (self.kernel_size[1]-1)-1)/self.stride + 1
+        return [int(H), int(W)]
     
     def forward(self, *input): # see end of projdescription
-        unfolded = unfold(input, self.kernel_size)
-        self.input = input
-        self.x = self.weight @ unfolded + self.bias 
+        unfolded = unfold(input[0], kernel_size=self.kernel_size, stride=self.stride)
+        self.input = input[0]
+        self.x = self.weight.view(self.output_channels, -1) @ unfolded + self.bias.view(1,-1,1)
+
+        H, W = self.compute_output_shape(input[0])
+
+        self.x = self.x.view(self.input.shape[0], self.output_channels, H, W)
         return self.x   
         
     def backward(self, *gradwrtoutput):
-        gradux =  (self.weight).T.dot(gradwrtoutput) #derivative w.r.t. unfold(x)
-        self.gradoutput = gradwrtoutput
-        self.gradx = fold(gradux, input.shape[2:4],self.kernel_size) #derivative w.r.t. x
+        gradux =  (self.weight).T.dot(gradwrtoutput[0]) #derivative w.r.t. unfold(x)
+        self.gradoutput = gradwrtoutput[0]
+        self.gradx = fold(gradux, self.input.shape[2:4], kernel_size=self.kernel_size, stride=self.stride) #derivative w.r.t. x
         # fold is not exactly the inverse of unfold but does exactly the weight sharing for the computation of the gradient
         return self.gradx
 
     def param(self):
-        dldw = self.gradoutput.dot(self.input.T)
-        dldb = self.gradoutput
+        if not len(self.gradoutput) == 0: 
+            self.dldw = self.gradoutput.dot(self.input.T)
+            self.dldb = self.gradoutput
         
         # list of zip to create list of tuples
-        return list(zip(cat(self.weight,self.bias), cat(dldw, dldb)))
+        res1 = list(zip(self.weight, self.dldw))
+        res2 = list(zip(self.bias, self.dldb))
+        return res1+res2
     
 
 
@@ -96,10 +105,10 @@ class NearestNeighbor(Module):
     def __init__(self, scale_factor) -> None:
         super().__init__()
         
-        self.x = empty()
-        self.NN_interp = empty()
-        self.gradx = empty()
-        self.input = empty()
+        self.x = Tensor()
+        self.NN_interp = Tensor()
+        self.gradx = Tensor()
+        self.input = Tensor()
         
         # NN
         self.scale_factor = scale_factor
@@ -107,15 +116,15 @@ class NearestNeighbor(Module):
 
 
     def forward (self, *input):
-        self.input = input
+        self.input = input[0]
         # Compute the NN output shape from the input size and the scale factor
-        self.NN_output_shape = [input.shape[0], input.shape[1], [self.scale_factor * dim for dim in input.shape[2:]]]
+        self.NN_output_shape = [self.input.shape[0], self.input.shape[1]] + [self.scale_factor * dim for dim in self.input.shape[2:]]
         self.NN_interp = empty(self.NN_output_shape)
 
         # Apply NN interpolation
         for i in range(self.scale_factor):
             for j in range(self.scale_factor):
-                self.NN_interp[:,:,i::self.scale_factor,j::self.scale_factor] = input
+                self.NN_interp[:,:,i::self.scale_factor,j::self.scale_factor] = input[0]
         
         return self.NN_interp
 
@@ -124,8 +133,8 @@ class NearestNeighbor(Module):
         # Since we used NN interpolation, we have to sum up the derivatives
         # in the gradient of the convolution on each block
         grad = empty(self.input.shape)
-        for i in range(input.shape[2]):
-            for j in range(input.shape[3]):
+        for i in range(self.input.shape[2]):
+            for j in range(self.input.shape[3]):
                 i_output = i * self.scale_factor
                 j_output = j * self.scale_factor
                 grad[:,:,i,j] = gradwrtoutput[:,:,i_output:i_output+self.scale_factor,j_output:j_output+self.scale_factor].sum()
@@ -140,14 +149,14 @@ class ReLU(Module):
     
     def __init__(self) -> None:
         super().__init__()
-        self.input = empty()
-        self.output = empty()
-        self.gradx = empty()
+        self.input = Tensor()
+        self.output = Tensor()
+        self.gradx = Tensor()
     
     def forward(self, *input):
-        output = empty(input.shape)
-        output[input>0] = input
-        self.input = input
+        self.input = input[0]
+        output = empty(input[0].shape)
+        output = self.input.where(self.input > 0, 0*self.input)
         self.output = output
         return output
         
@@ -155,12 +164,13 @@ class ReLU(Module):
         self.gradx =  gradwrtoutput.multiply(self.sigmaprime(self.input))
         return self.gradx
         
-    def sigmaprime(*input):
-        output = empty(input.shape)
+    def sigmaprime(self, *input):
+        output = empty(input[0].shape)
         output.fill_(0.0)
-        output[input>0] = 1.0
+        id = empty(input[0].shape)
+        id.fill_(1.0)
+        output = id.where(input[0] > 0, output)
         return output
-     
         
      
     
@@ -169,13 +179,13 @@ class Sigmoid(Module):
     
     def __init__(self) -> None:
         super().__init__()
-        self.input = empty()
-        self.output = empty()
-        self.gradx = empty()
+        self.input = Tensor()
+        self.output = Tensor()
+        self.gradx = Tensor()
     
     def forward(self, *input):
-        self.input = input
-        self.output = self.sigma(input)
+        self.input = input[0]
+        self.output = self.sigma(input[0])
         return self.output
         
     def backward(self, *gradwrtoutput):
@@ -183,10 +193,10 @@ class Sigmoid(Module):
         return self.gradx
     
     def sigma(self, *input):
-        return input.exp()/(1+ input.exp())
+        return input[0].exp()/(1+ input[0].exp())
     
     def sigmaprime(self, *input):
-        return self.sigma(input)*(1-self.sigma(input))
+        return self.sigma(input[0])*(1-self.sigma(input[0]))
     
     
     
@@ -194,14 +204,14 @@ class MSE(Module):
     
     def __init__(self) -> None:
         super().__init__()
-        self.input = empty()
-        self.target = empty()
-        self.gradx = empty()
+        self.input = Tensor()
+        self.target = Tensor()
+        self.gradx = Tensor()
     
-    def forward(self, *input, target):
-        self.input = input
-        self.target = target
-        return pow(input-target,2).sum()
+    def forward(self, *input):
+        self.input = input[0]
+        self.target = input[1]
+        return pow(input[0]-input[1],2).sum()
         
     def backward(self):
         self.gradx = 2*(self.input-self.target)
@@ -217,10 +227,10 @@ class SGD(Module):
         self.parameters = parameters
         self.lr = lr
     
-    def step(self, *parameters):
-        idx = torch.empty(1)
-        idx.random_(0,len(parameters))
-        parameters = parameters - self.lr * parameters[idx.item()][1]
+    def step(self):
+        idx = empty(1)
+        idx.random_(0,len(self.parameters))
+        self.parameters -= self.lr * self.parameters[idx.item()][1]
         
 
 
@@ -230,29 +240,28 @@ class Sequential(Module):
     def __init__(self, *args) -> None:
         super().__init__()
         self.args = args
-        self.input = empty()
-        self.output = empty()
-        self.gradx = empty()
+        self.input = Tensor()
+        self.output = Tensor()
+        self.gradx = Tensor()
     
     def forward(self, *input):
-        self.input = input
-        output = input.copy()
+        self.input = input[0]
+        self.output = empty(self.input.shape)
+        self.output.copy_(self.input)
         for module in self.args:
-            output = module.forward(output)
-        self.output = output
-        return output
+            self.output = module.forward(self.output)
+        return self.output
         
     def backward(self, *gradwrtoutput):
-        gradx = gradwrtoutput.copy()
+        self.gradx.copy_(gradwrtoutput)
         for module in self.args:
-            gradx = module.backward(gradx)
-        self.gradx = gradx
-        return gradx
-    
+            self.gradx = module.backward(self.gradx)
+        return self.gradx
+
     def param(self):
         param = []
         for module in self.args:
-            param = param.append(module.param())
+            param.append(module.param())
         return param
     
     
