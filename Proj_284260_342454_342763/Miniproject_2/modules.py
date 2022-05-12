@@ -229,15 +229,14 @@ class MSE(Module):
 class SGD(Module):
     def __init__(self, *parameters, lr) -> None:
         super().__init__()
-        self.parameters = parameters
+        self.parameters = parameters[0]
         self.lr = lr
     
     def step(self):
         idx = empty(1)
-        idx.random_(0,len(self.parameters)) # PROBLEM: len = 1
-        print(len(self.parameters))
-        print(idx.item())
-        self.parameters -= self.lr * self.parameters[int(idx.item())][1]
+        idx.random_(0,len(self.parameters))
+        # wrong formula, need correction
+        # self.parameters -= self.lr * self.parameters[int(idx.item())]
         
 
 
@@ -269,7 +268,7 @@ class Sequential(Module):
     def param(self):
         param = []
         for module in self.args:
-            param.append(module.param())
+            param = param + module.param()
         return param
     
     
