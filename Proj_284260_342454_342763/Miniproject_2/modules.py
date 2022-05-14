@@ -9,9 +9,6 @@ from torch.nn.functional import fold, unfold
 # torch.arange to create intervals
 # fold/unfold to combine tensor blocks/batches (see end of projdescription)
 
-from torch import stack # temporary
-
-
 # the code should work without autograd, don't touch it
 from torch import set_grad_enabled
 set_grad_enabled(False)
@@ -38,7 +35,7 @@ class Module (object):
         raise NotImplementedError
     def param (self):
         return []
-    def gradparam (self, idx):
+    def stochgradparam (self, idx): #to return the grad of params w.r.t. to the idx input
         return []
     def update_params(self, new_params):
         pass
@@ -71,6 +68,10 @@ class Conv2d(Module):
         self.dldw = empty((self.output_channels, self.input_channels, self.kernel_size[0], self.kernel_size[1]))
         self.dldb = empty((self.output_channels))
         
+        N = self.output_channels * self.input_channels * self.kernel_size[0] * self.kernel_size[1]
+        self.weight.uniform_(-1/N**0.5, 1/N**0.5)
+        self.bias.uniform_(-1/N**0.5, 1/N**0.5)
+        
     
     def compute_output_shape(self, *input): # for the time being, not used
         H = (input[0].shape[2] - (self.kernel_size[0]-1)-1)/self.stride + 1
@@ -101,7 +102,7 @@ class Conv2d(Module):
         res = [self.weight, self.bias]
         return res
     
-    def gradparam(self, idx):
+    def stochgradparam(self, idx):
         if not len(self.gradoutput) == 0: 
             # we need the idx term and not the 100 batch elements
             unfolded = unfold(self.input[idx:idx+1,:,:,:], kernel_size=self.kernel_size, stride=self.stride)
@@ -255,10 +256,10 @@ class SGD(Module):
     def step(self, model,idx):
         for module in model.args:
             params = module.param()
-            stochgradparams = module.gradparam(idx)
+            stochgradparams = module.stochgradparam(idx)
             rhs = []
             for i in range(len(params)):
-                rhs.append(params[i] - stochgradparams[i])
+                rhs.append(params[i] - self.lr*stochgradparams[i])
             module.update_params(rhs)
         
 
@@ -297,8 +298,8 @@ class NearestUpsampling(Sequential):
     def param(self):
         return self.args[1].param()
     
-    def gradparam(self,idx):
-        return self.args[1].gradparam(idx)
+    def stochgradparam(self,idx):
+        return self.args[1].stochgradparam(idx)
     
     def update_params(self, new_params):
         self.args[1].update_params(new_params)
