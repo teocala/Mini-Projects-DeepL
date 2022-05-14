@@ -45,7 +45,7 @@ class Model () :
             Sigmoid()
         )
         self.criterion = MSE()
-        self.optimizer = SGD(self.model.param(), lr=0.001)
+        self.optimizer = SGD(lr=0.001)
 
     def load_pretrained_model ( self ) -> None :
         ## This loads the parameters saved in bestmodel .pth into the model
@@ -66,9 +66,12 @@ class Model () :
                 output = self.predict(batch_input)
                 loss = self.criterion.forward(output, batch_target)
                 total_loss += loss
-                gradx = self.criterion.backward() #loss w.r.t output of net
-                self.gradx = self.model.backward(gradx) #loss w.r.t input of net
-                self.optimizer.step()
+                idx = empty(1)
+                idx.random_(0,batch_input.shape[0])
+                idx = int(idx.item())
+                gradx = self.criterion.stoch_backward(idx) #loss w.r.t output of net
+                self.model.backward(gradx) #loss w.r.t input of net
+                self.optimizer.step(self.model, idx)
             print(f'Epoch {epoch}/{epochs-1} Training Loss {total_loss}')
 
 

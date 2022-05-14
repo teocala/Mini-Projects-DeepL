@@ -9,6 +9,8 @@ from torch.nn.functional import fold, unfold
 # torch.arange to create intervals
 # fold/unfold to combine tensor blocks/batches (see end of projdescription)
 
+from torch import stack # temporary
+
 
 # the code should work without autograd, don't touch it
 from torch import set_grad_enabled
@@ -36,6 +38,10 @@ class Module (object):
         raise NotImplementedError
     def param (self):
         return []
+    def gradparam (self, idx):
+        return []
+    def update_params(self, new_params):
+        pass
 
 
 
@@ -75,11 +81,10 @@ class Conv2d(Module):
         unfolded = unfold(input[0], kernel_size=self.kernel_size, stride=self.stride)
         self.input = input[0]
         self.x = self.weight.view(self.output_channels, -1) @ unfolded + self.bias.view(1,-1,1)
-
         H, W = self.compute_output_shape(input[0])
-
-        self.x_shape = self.x.shape
         
+        self.x_shape = self.x.shape
+        self.stoch_x_shape = [1, self.x.shape[1], self.x_shape[2]]
         self.x = self.x.view(self.input.shape[0], self.output_channels, H, W)
         return self.x   
         
@@ -93,14 +98,25 @@ class Conv2d(Module):
         return self.gradx
 
     def param(self):
+        res = [self.weight, self.bias]
+        return res
+    
+    def gradparam(self, idx):
         if not len(self.gradoutput) == 0: 
-            self.dldw = self.gradoutput.dot(self.input.T)
-            self.dldb = self.gradoutput
+            # we need the idx term and not the 100 batch elements
+            unfolded = unfold(self.input[idx:idx+1,:,:,:], kernel_size=self.kernel_size, stride=self.stride)
+            self.dldw = self.gradoutput[idx:idx+1,:,:,:].view(self.stoch_x_shape) @ unfolded.transpose(1,2)
+            self.dldw = self.dldw.view(self.weight.shape)
+            
+            self.dldb = self.gradoutput[idx:idx+1,:,:,:].view(self.stoch_x_shape).sum(2) # again weight sharing
+            self.dldb = self.dldb.view(self.bias.shape)
+        return [self.dldw, self.dldb]
+    
+    
+    def update_params(self, new_params):
+        self.weight = new_params[0]
+        self.bias = new_params[1]
         
-        # list of zip to create list of tuples
-        res1 = list(zip(self.weight, self.dldw))
-        res2 = list(zip(self.bias, self.dldb))
-        return res1+res2
     
 
 
@@ -222,21 +238,28 @@ class MSE(Module):
         self.gradx = 2*(self.x-self.target)
         return self.gradx
     
+    def stoch_backward(self, idx):
+        self.gradx = 2*(self.x[idx] - self.target[idx])
+        return self.gradx
+        
+    
     
     
     
     
 class SGD(Module):
-    def __init__(self, *parameters, lr) -> None:
+    def __init__(self, lr) -> None:
         super().__init__()
-        self.parameters = parameters[0]
         self.lr = lr
     
-    def step(self):
-        idx = empty(1)
-        idx.random_(0,len(self.parameters))
-        # wrong formula, need correction
-        # self.parameters -= self.lr * self.parameters[int(idx.item())]
+    def step(self, model,idx):
+        for module in model.args:
+            params = module.param()
+            stochgradparams = module.gradparam(idx)
+            rhs = []
+            for i in range(len(params)):
+                rhs.append(params[i] - stochgradparams[i])
+            module.update_params(rhs)
         
 
 
@@ -264,19 +287,20 @@ class Sequential(Module):
         for module in self.args[::-1]:
             self.gradx = module.backward(self.gradx)
         return self.gradx
-
-    def param(self):
-        param = []
-        for module in self.args:
-            param = param + module.param()
-        return param
-    
     
     
     
 class NearestUpsampling(Sequential):  
     def __init__(self, scale_factor, input_channels, output_channels, kernel_size, stride) -> None:
         super().__init__(NearestNeighbor(scale_factor), Conv2d(input_channels, output_channels, kernel_size, stride))
-        
+    
+    def param(self):
+        return self.args[1].param()
+    
+    def gradparam(self,idx):
+        return self.args[1].gradparam(idx)
+    
+    def update_params(self, new_params):
+        self.args[1].update_params(new_params)
         
         

@@ -7,7 +7,7 @@ import sys
 import matplotlib.pyplot as plt
 from model import Model
 
-os.chdir(sys.path[0])
+#os.chdir(sys.path[0])
 
 
 def main():
