@@ -48,7 +48,7 @@ class Model () :
             # ReLU()
         )
         self.criterion = MSE()
-        self.optimizer = SGD(self.model.param(), lr=0.1)
+        self.optimizer = SGD(self.model.param(), lr=0.00001)
 
     def load_pretrained_model ( self ) -> None :
         ## This loads the parameters saved in bestmodel .pth into the model
@@ -60,7 +60,7 @@ class Model () :
         #: train˙target : tensor of size (N, C, H, W) containing another noisy version of the same images , which only differs from the input by their noise .
         set_grad_enabled(False)
         batch_size = 500
-        epochs = 5
+        epochs = 10
 
         # train_target_test = torch.randn((500,32,15,15)) # Just to work with the right dimension with one Conv2D
 

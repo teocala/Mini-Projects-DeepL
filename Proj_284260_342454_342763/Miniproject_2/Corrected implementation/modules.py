@@ -94,8 +94,13 @@ class Conv2d(Module):
         return self.x   
         
     def backward(self, *gradwrtoutput):
-        gradux =  (self.weight.view(self.output_channels, -1)).T @ gradwrtoutput[0].view(self.x_shape) #derivative w.r.t. unfold(x)
         self.gradoutput = gradwrtoutput[0]
+        G = self.gradoutput.view(self.x_shape).transpose_(1,2)
+        W = self.weight.view(self.output_channels, -1)
+        gradux = torch.tensordot(G,W, dims=1)
+        gradux = gradux.transpose_(1,2)
+        
+        
 
         folded = fold(gradux, self.input.shape[2:], kernel_size=self.kernel_size, stride=self.stride) #derivative w.r.t. x
         # fold is not exactly the inverse of unfold but does exactly the weight sharing for the computation of the gradient
@@ -104,22 +109,13 @@ class Conv2d(Module):
 
     def param(self):
         if not len(self.gradoutput) == 0: 
-            unfolded = unfold(self.input, kernel_size=self.kernel_size, stride=self.stride)
-
-            unfolded.transpose_(1,2)
-            U = torch.zeros(unfolded.shape[0],self.output_channels,unfolded.shape[1],self.output_channels,unfolded.shape[2])
-
-            for idx in range(self.input_channels):
-                U[:,idx,:,idx,:] = unfolded
-
-
-            first_operand = self.gradoutput.view(self.x_shape) 
-            second_operand = U
-
-            self.dldw = torch.tensordot(first_operand, second_operand, dims = 3)
-            self.dldw = self.dldw.view(self.weight.shape)
-
             
+            unfolded = unfold(self.input, kernel_size=self.kernel_size, stride=self.stride)
+            G = self.gradoutput.view(self.x_shape).transpose_(0,1)
+            U = unfolded.transpose_(1,2)
+            
+            self.dldw = torch.tensordot(G,U,dims=2)
+            self.dldw = self.dldw.view(self.weight.shape)
             self.dldb = (self.gradoutput.view(self.x_shape).sum(2)).sum(0) # again weight sharing
             self.dldb = self.dldb.view(self.bias.shape)
 
@@ -265,7 +261,8 @@ class SGD(Module):
             for p in module.param():
                 a = torch.empty(p[0].shape)
                 a.copy_(p[0])
-                rhs.append(p[0] - self.lr*p[1])
+                rhs.append(a - self.lr*p[1])
+                print (torch.mean(abs(a)))
                 # print(p[1])
                 # print(f"p: {p[0]}", f"grad_p : {p[1]}")
 

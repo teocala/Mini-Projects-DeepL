@@ -7,7 +7,7 @@ import sys
 import matplotlib.pyplot as plt
 from model import Model
 
-os.chdir(sys.path[0])
+#os.chdir(sys.path[0])
 
 
 def main():
@@ -17,8 +17,8 @@ def main():
 
     # Load the data    
     print('Loading the data...')
-    train_input, train_target = torch.load('train_data.pkl')
-    test_input, test_target = torch.load('val_data.pkl')
+    train_input, train_target = torch.load('../train_data.pkl')
+    test_input, test_target = torch.load('../val_data.pkl')
 
 
     # Select a subset to speed up computations
