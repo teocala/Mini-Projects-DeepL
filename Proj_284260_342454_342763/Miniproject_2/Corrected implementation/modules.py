@@ -105,18 +105,23 @@ class Conv2d(Module):
     def param(self):
         if not len(self.gradoutput) == 0: 
             unfolded = unfold(self.input, kernel_size=self.kernel_size, stride=self.stride)
-            self.dldw = (self.gradoutput.view(self.x_shape) @ unfolded.transpose(1,2)).sum(0)
+
+            unfolded.transpose_(1,2)
+            U = torch.zeros(unfolded.shape[0],self.output_channels,unfolded.shape[1],self.output_channels,unfolded.shape[2])
+
+            for idx in range(self.input_channels):
+                U[:,idx,:,idx,:] = unfolded
+
+
+            first_operand = self.gradoutput.view(self.x_shape) 
+            second_operand = U
+
+            self.dldw = torch.tensordot(first_operand, second_operand, dims = 3)
             self.dldw = self.dldw.view(self.weight.shape)
+
             
             self.dldb = (self.gradoutput.view(self.x_shape).sum(2)).sum(0) # again weight sharing
             self.dldb = self.dldb.view(self.bias.shape)
-
-            # self.dldw = self.gradoutput @ (self.input.T)
-            # self.dldb = self.gradoutput
-        
-        # list of zip to create list of tuples
-        # res1 = list(zip(self.weight, self.dldw))
-        # res2 = list(zip(self.bias, self.dldb))
 
         return [[self.weight, self.dldw],[self.bias, self.dldb]]
 
@@ -262,7 +267,7 @@ class SGD(Module):
                 a.copy_(p[0])
                 rhs.append(p[0] - self.lr*p[1])
                 # print(p[1])
-                print(f"p: {p[0]}", f"grad_p : {p[1]}")
+                # print(f"p: {p[0]}", f"grad_p : {p[1]}")
 
             module.update_params(rhs)
         # for p in self.parameters:

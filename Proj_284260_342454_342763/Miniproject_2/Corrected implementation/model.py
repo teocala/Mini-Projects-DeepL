@@ -36,16 +36,16 @@ class Model () :
     def __init__ ( self ) -> None :
         ## instantiate model + optimizer + loss function + any other stuff you need
         self.model = Sequential(# N, 3, 32, 32
-            # Conv2d(input_channels = 3, output_channels = 32, kernel_size = (5,5), stride = 2), # N, 32, 14, 14
-            # ReLU(),
-            # Conv2d(input_channels = 32, output_channels = 32, kernel_size = (3,3), stride = 2), # N, 32, 5, 5
-            # ReLU(),
-            # NearestUpsampling(scale_factor = 5, input_channels = 32, output_channels = 32, kernel_size = (5,5), stride = 2), #  N, 32, 15, 15
-            # ReLU(),
-            # NearestUpsampling(scale_factor = 5, input_channels = 32, output_channels = 3, kernel_size = (3,3), stride = 2), # N, 3, 32, 32
-            # Sigmoid()
-            Conv2d(input_channels = 3, output_channels = 32, kernel_size = (3,3), stride = 2), # N, 32, 15, 15
-            ReLU()
+            Conv2d(input_channels = 3, output_channels = 32, kernel_size = (5,5), stride = 2), # N, 32, 14, 14
+            ReLU(),
+            Conv2d(input_channels = 32, output_channels = 32, kernel_size = (3,3), stride = 2), # N, 32, 5, 5
+            ReLU(),
+            NearestUpsampling(scale_factor = 5, input_channels = 32, output_channels = 32, kernel_size = (5,5), stride = 2), #  N, 32, 15, 15
+            ReLU(),
+            NearestUpsampling(scale_factor = 5, input_channels = 32, output_channels = 3, kernel_size = (3,3), stride = 2), # N, 3, 32, 32
+            Sigmoid()
+            # Conv2d(input_channels = 3, output_channels = 32, kernel_size = (3,3), stride = 2), # N, 32, 15, 15
+            # ReLU()
         )
         self.criterion = MSE()
         self.optimizer = SGD(self.model.param(), lr=0.1)
@@ -60,13 +60,13 @@ class Model () :
         #: train˙target : tensor of size (N, C, H, W) containing another noisy version of the same images , which only differs from the input by their noise .
         set_grad_enabled(False)
         batch_size = 500
-        epochs = 3
+        epochs = 5
 
-        train_target_test = torch.arange(0,500*32*15*15).view(500,32,15,15) # Just to work with the right dimension with one Conv2D
+        # train_target_test = torch.randn((500,32,15,15)) # Just to work with the right dimension with one Conv2D
 
         for epoch in range(epochs):
             total_loss = 0
-            for batch_input, batch_target in zip(train_input.split(batch_size), train_target_test.split(batch_size)):
+            for batch_input, batch_target in zip(train_input.split(batch_size), train_target.split(batch_size)):
                 output = self.predict(batch_input)
                 loss = self.criterion.forward(output, batch_target)
                 total_loss += loss
