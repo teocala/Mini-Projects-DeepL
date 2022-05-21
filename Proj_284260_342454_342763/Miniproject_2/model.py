@@ -15,6 +15,7 @@ from modules import *
 from torch import set_grad_enabled
 set_grad_enabled(False)
 
+import torch # TO REMOVE
 
 # REFERENCE STRUCTURE:
 """
@@ -37,15 +38,15 @@ class Model () :
         self.model = Sequential(# N, 3, 32, 32
             Conv2d(input_channels = 3, output_channels = 32, kernel_size = (5,5), stride = 2), # N, 32, 14, 14
             ReLU(),
-            Conv2d(input_channels = 32, output_channels = 32, kernel_size = (3,3), stride = 2), # N, 32, 5, 5
+            Conv2d(input_channels = 32, output_channels = 32, kernel_size = (3,3), stride = 2), # N, 32, 6, 6
             ReLU(),
-            NearestUpsampling(scale_factor = 5, input_channels = 32, output_channels = 32, kernel_size = (5,5), stride = 2), #  N, 32, 3, 3
+            NearestUpsampling(scale_factor = 3, input_channels = 32, output_channels = 32, kernel_size = (2,2), stride = 1), #  N, 32, 17, 17
             ReLU(),
-            NearestUpsampling(scale_factor = 5, input_channels = 32, output_channels = 3, kernel_size = (3,3), stride = 2), 
+            NearestUpsampling(scale_factor = 2, input_channels = 32, output_channels = 3, kernel_size = (3,3), stride = 1), # N, 3, 32, 32
             Sigmoid()
         )
         self.criterion = MSE()
-        self.optimizer = SGD(lr=0.001)
+        self.optimizer = SGD(self.model.param(), lr=0.000001)
 
     def load_pretrained_model ( self ) -> None :
         ## This loads the parameters saved in bestmodel .pth into the model
@@ -56,9 +57,10 @@ class Model () :
         #: train˙input : tensor of size (N, C, H, W) containing a noisy version of the images.
         #: train˙target : tensor of size (N, C, H, W) containing another noisy version of the same images , which only differs from the input by their noise .
         set_grad_enabled(False)
-        batch_size = 100
-        epochs = 5
-        total_loss = 0
+        batch_size = 500
+        epochs = 100
+
+        # train_target_test = torch.randn((500,32,15,15)) # Just to work with the right dimension with one Conv2D
 
         for epoch in range(epochs):
             total_loss = 0
@@ -66,12 +68,11 @@ class Model () :
                 output = self.predict(batch_input)
                 loss = self.criterion.forward(output, batch_target)
                 total_loss += loss
-                idx = empty(1)
-                idx.random_(0,batch_input.shape[0])
-                idx = int(idx.item())
-                gradx = self.criterion.stoch_backward(idx) #loss w.r.t output of net
-                self.model.backward(gradx) #loss w.r.t input of net
-                self.optimizer.step(self.model, idx)
+                gradx = self.criterion.backward() #loss w.r.t output of net
+                self.gradx = self.model.backward(gradx) #loss w.r.t input of net
+                self.optimizer.step(self.model)
+            # for p in self.model.param():
+            #     print(f"p: {p[0]}", f"grad_p : {p[1]}")
             print(f'Epoch {epoch}/{epochs-1} Training Loss {total_loss}')
 
 

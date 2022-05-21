@@ -9,6 +9,8 @@ from torch.nn.functional import fold, unfold
 # torch.arange to create intervals
 # fold/unfold to combine tensor blocks/batches (see end of projdescription)
 
+import torch #TO REMOVE
+
 # the code should work without autograd, don't touch it
 from torch import set_grad_enabled
 set_grad_enabled(False)
@@ -34,8 +36,6 @@ class Module (object):
     def backward (self , *gradwrtoutput):
         raise NotImplementedError
     def param (self):
-        return []
-    def stochgradparam (self, idx): #to return the grad of params w.r.t. to the idx input
         return []
     def update_params(self, new_params):
         pass
@@ -67,10 +67,13 @@ class Conv2d(Module):
         self.bias = empty((self.output_channels))
         self.dldw = empty((self.output_channels, self.input_channels, self.kernel_size[0], self.kernel_size[1]))
         self.dldb = empty((self.output_channels))
-        
+
+
+        # Random initialization 
         N = self.output_channels * self.input_channels * self.kernel_size[0] * self.kernel_size[1]
-        self.weight.uniform_(-1/N**0.5, 1/N**0.5)
-        self.bias.uniform_(-1/N**0.5, 1/N**0.5)
+        self.weight.uniform_(-1/(N**0.5), 1/(N**0.5))
+        self.bias.uniform_(-1/(N**0.5), 1/(N**0.5))
+
         
     
     def compute_output_shape(self, *input): # for the time being, not used
@@ -82,16 +85,20 @@ class Conv2d(Module):
         unfolded = unfold(input[0], kernel_size=self.kernel_size, stride=self.stride)
         self.input = input[0]
         self.x = self.weight.view(self.output_channels, -1) @ unfolded + self.bias.view(1,-1,1)
+
         H, W = self.compute_output_shape(input[0])
-        
+
         self.x_shape = self.x.shape
-        self.stoch_x_shape = [1, self.x.shape[1], self.x_shape[2]]
+        
         self.x = self.x.view(self.input.shape[0], self.output_channels, H, W)
         return self.x   
         
     def backward(self, *gradwrtoutput):
-        gradux =  (self.weight.view(self.output_channels, -1)).T @ gradwrtoutput[0].view(self.x_shape) #derivative w.r.t. unfold(x)
         self.gradoutput = gradwrtoutput[0]
+        G = self.gradoutput.view(self.x_shape).transpose_(1,2)
+        W = self.weight.view(self.output_channels, -1)
+        gradux = torch.tensordot(G,W, dims=1)
+        gradux = gradux.transpose_(1,2)
 
         folded = fold(gradux, self.input.shape[2:], kernel_size=self.kernel_size, stride=self.stride) #derivative w.r.t. x
         # fold is not exactly the inverse of unfold but does exactly the weight sharing for the computation of the gradient
@@ -99,25 +106,22 @@ class Conv2d(Module):
         return self.gradx
 
     def param(self):
-        res = [self.weight, self.bias]
-        return res
-    
-    def stochgradparam(self, idx):
         if not len(self.gradoutput) == 0: 
-            # we need the idx term and not the 100 batch elements
-            unfolded = unfold(self.input[idx:idx+1,:,:,:], kernel_size=self.kernel_size, stride=self.stride)
-            self.dldw = self.gradoutput[idx:idx+1,:,:,:].view(self.stoch_x_shape) @ unfolded.transpose(1,2)
-            self.dldw = self.dldw.view(self.weight.shape)
             
-            self.dldb = self.gradoutput[idx:idx+1,:,:,:].view(self.stoch_x_shape).sum(2) # again weight sharing
+            unfolded = unfold(self.input, kernel_size=self.kernel_size, stride=self.stride)
+            G = self.gradoutput.view(self.x_shape).transpose_(0,1)
+            U = unfolded.transpose_(1,2)
+            
+            self.dldw = torch.tensordot(G,U,dims=2)
+            self.dldw = self.dldw.view(self.weight.shape)
+            self.dldb = self.gradoutput.view(self.x_shape).sum(dim=[0,2]) # again weight sharing
             self.dldb = self.dldb.view(self.bias.shape)
-        return [self.dldw, self.dldb]
-    
-    
+
+        return [[self.weight, self.dldw],[self.bias, self.dldb]]
+
     def update_params(self, new_params):
         self.weight = new_params[0]
         self.bias = new_params[1]
-        
     
 
 
@@ -159,7 +163,7 @@ class NearestNeighbor(Module):
             for j in range(self.input.shape[3]):
                 i_output = i * self.scale_factor
                 j_output = j * self.scale_factor
-                grad[:,:,i,j] = gradwrtoutput[0][:,:,i_output:i_output+self.scale_factor,j_output:j_output+self.scale_factor].sum()
+                grad[:,:,i,j] = gradwrtoutput[0][:,:,i_output:i_output+self.scale_factor,j_output:j_output+self.scale_factor].sum(dim=[2,3])
 
         self.gradx = grad
         return self.gradx
@@ -233,34 +237,33 @@ class MSE(Module):
     def forward(self, *input):
         self.target = input[1]
         self.x = input[0]
-        return pow(input[0]-input[1],2).sum()
+        return pow(input[0]-input[1],2).sum() / self.x.shape[0]
         
     def backward(self):
-        self.gradx = 2*(self.x-self.target)
+        self.gradx = 2/self.x.shape[0] * (self.x-self.target)
         return self.gradx
-    
-    def stoch_backward(self, idx):
-        self.gradx = 2*(self.x[idx] - self.target[idx])
-        return self.gradx
-        
     
     
     
     
     
 class SGD(Module):
-    def __init__(self, lr) -> None:
+    def __init__(self, *parameters, lr) -> None:
         super().__init__()
+        self.parameters = parameters[0]
         self.lr = lr
     
-    def step(self, model,idx):
+    def step(self, model):
         for module in model.args:
-            params = module.param()
-            stochgradparams = module.stochgradparam(idx)
             rhs = []
-            for i in range(len(params)):
-                rhs.append(params[i] - self.lr*stochgradparams[i])
+            for p in module.param():
+                a = torch.empty(p[0].shape)
+                a.copy_(p[0])
+                rhs.append(a - self.lr*p[1])
+                #print (torch.mean(abs(a)))
+                
             module.update_params(rhs)
+
         
 
 
@@ -273,6 +276,7 @@ class Sequential(Module):
         self.input = Tensor()
         self.output = Tensor()
         self.gradx = Tensor()
+
     
     def forward(self, *input):
         self.input = input[0]
@@ -288,20 +292,21 @@ class Sequential(Module):
         for module in self.args[::-1]:
             self.gradx = module.backward(self.gradx)
         return self.gradx
+
+    def param(self):
+        param = [module.param() for module in self.args]
+        return param
+    
     
     
     
 class NearestUpsampling(Sequential):  
     def __init__(self, scale_factor, input_channels, output_channels, kernel_size, stride) -> None:
         super().__init__(NearestNeighbor(scale_factor), Conv2d(input_channels, output_channels, kernel_size, stride))
-    
-    def param(self):
-        return self.args[1].param()
-    
-    def stochgradparam(self,idx):
-        return self.args[1].stochgradparam(idx)
-    
-    def update_params(self, new_params):
-        self.args[1].update_params(new_params)
         
+    def param(self): # Return parameters of Convolutional layer
+        return self.args[1].param()
+
+    def update_params(self, new_params): # Update parameters of Convolutional layer 
+        self.args[1].update_params(new_params)
         

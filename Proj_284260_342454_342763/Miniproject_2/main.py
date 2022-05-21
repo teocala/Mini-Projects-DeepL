@@ -22,7 +22,7 @@ def main():
 
 
     # Select a subset to speed up computations
-    train_size = 1000
+    train_size = 5000
     train_input = train_input[:train_size]
     train_target = train_target[:train_size]
     test_input = test_input[:train_size]
@@ -55,33 +55,33 @@ def main():
     # Just for us, probably we can't use matplotlib
     # Try to see if there are visualization tools only in Pytorch 
 
-    # Set "train" if you want to compare the training images, "test" for testing ones
-    images_to_visualize = "train"
-    if (images_to_visualize == "train"):
-        with torch.no_grad():
-            pred = model.predict(train_input).cpu()
-        train_input = train_input.cpu()
-        images = train_input
-    elif (images_to_visualize == "test"):
-        pred = prediction
-        test_input = test_input.cpu()
-        images = test_input
-        pred = pred.cpu()
-    else:
-        raise RuntimeError("Che cazzo hai messo coglione")
+    # # Set "train" if you want to compare the training images, "test" for testing ones
+    # images_to_visualize = "train"
+    # if (images_to_visualize == "train"):
+    #     with torch.no_grad():
+    #         pred = model.predict(train_input).cpu()
+    #     train_input = train_input.cpu()
+    #     images = train_input
+    # elif (images_to_visualize == "test"):
+    #     pred = prediction
+    #     test_input = test_input.cpu()
+    #     images = test_input
+    #     pred = pred.cpu()
+    # else:
+    #     raise RuntimeError("Che cazzo hai messo coglione")
 
-    n_comparisons = 5
-    for i in range(n_comparisons):
-        f = plt.figure()
-        f.add_subplot(1, 2, 1)
-        fig1 = plt.imshow(images[i].int().permute(1, 2, 0))
-        fig1.axes.get_xaxis().set_visible(False)
-        fig1.axes.get_yaxis().set_visible(False)
-        f.add_subplot(1, 2, 2)
-        fig2 = plt.imshow(pred[i].int().permute(1, 2, 0))
-        fig2.axes.get_xaxis().set_visible(False)
-        fig2.axes.get_yaxis().set_visible(False)
-        plt.show(block=True)
+    # n_comparisons = 5
+    # for i in range(n_comparisons):
+    #     f = plt.figure()
+    #     f.add_subplot(1, 2, 1)
+    #     fig1 = plt.imshow(images[i].int().permute(1, 2, 0))
+    #     fig1.axes.get_xaxis().set_visible(False)
+    #     fig1.axes.get_yaxis().set_visible(False)
+    #     f.add_subplot(1, 2, 2)
+    #     fig2 = plt.imshow(pred[i].int().permute(1, 2, 0))
+    #     fig2.axes.get_xaxis().set_visible(False)
+    #     fig2.axes.get_yaxis().set_visible(False)
+    #     plt.show(block=True)
 
 
 
