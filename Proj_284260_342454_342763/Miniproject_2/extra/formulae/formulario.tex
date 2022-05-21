@@ -1,0 +1,154 @@
+\documentclass[11pt,titlepage]{article}
+
+\usepackage[american]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{amsmath,amsfonts,amssymb}
+\usepackage{graphicx}
+\usepackage{geometry}
+\geometry{a4paper}
+\usepackage[parfill]{parskip}
+\usepackage{graphicx}
+\usepackage{amssymb}
+\usepackage{epstopdf}
+\usepackage{stackengine}
+\usepackage{color}
+\usepackage[tt]{titlepic}
+\usepackage{fancyhdr}
+\usepackage{enumerate}
+\usepackage{lastpage}
+\usepackage{float}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amsthm}
+\usepackage{enumerate}
+\usepackage{enumitem}
+\usepackage{physics}
+\usepackage{bm}
+\usepackage{setspace}
+\usepackage{mathtools}
+\usepackage{subcaption}
+\usepackage{relsize}
+\usepackage{listings}
+\usepackage{array}
+\usepackage{caption}
+
+% Custom Defines
+\usepackage[comma,numbers,sort&compress]{natbib}
+\bibliographystyle{plainnat}
+\usepackage[pdfstartview=FitH,
+breaklinks=true,
+bookmarksopen=true,
+bookmarksnumbered=true,
+colorlinks=true,
+linkcolor=black,
+citecolor=black
+]{hyperref}
+\newcommand{\rmd}{\textrm{d}}
+\newcommand{\bi}[1]{{\ensuremath{\boldsymbol{#1}}}}
+\definecolor{gray}{rgb}{0.5,0.5,0.5}
+
+\topmargin=-0.45in
+\oddsidemargin=-0.1in
+\textwidth=6.8in
+\textheight=9.2in
+\headheight=30.9pt
+
+\renewcommand{\bibsection}{}
+%======================= SET YOUR NAME HERE =======================================
+\def\MyName{Matteo Calafà, Paolo Motta, Thomas Rimbot}
+
+%======================= Titlepage (DO NOT MODIFY) ================================
+\titlepic{\includegraphics[width=5cm]{Figures/EPFL_LOGO.jpg}}
+\title{\textbf{Some formulae}\\Course Project: Deep Learning}
+
+\author{~\\[3cm]~
+	\begin{tabular}{rl}
+		Name:&\MyName\\
+		Date:&\today\\
+		Course:&Deep Learning EE-559\\
+		Instructor:&François Fleuret
+\end{tabular}}
+\date{}
+%==================================================================================
+
+
+
+\begin{document}
+	%========================  Header (DO NOT MODIFY) =================================
+	\pagestyle{fancy} \pagenumbering{arabic} \setcounter{page}{1}
+	\addtolength{\headheight}{\baselineskip}
+	\lhead{\textbf{EE-559: Deep Learning}\\\MyName}
+	\rhead{\includegraphics[width=55pt]{Figures/EPFL_LOGO.jpg}}
+	\rfoot{\vspace{5pt}{\fontfamily{phv}\fontsize{5}{5}\selectfont EE-559 Project 2022, \MyName{}, \the\day.\the\month.\the\year, \thepage/\pageref{LastPage}}}
+	\renewcommand{\headrulewidth}{0.4pt}
+	\maketitle
+	%==================================================================================
+\section{Convolutional layer as linear layer}
+Take into consideration one single convolutional layer. Define:
+
+\begin{itemize}
+	\item $I$ as the 4D input tensor.
+	\item $W$ as the 2D weight tensor of the convolutional layer (that depends on the various parameters: kernel size, stride, padding \dots).
+	\item $B$ as the 1D bias tensor of the convolutional layer (that depends on the various parameters: kernel size, stride, padding \dots).
+	\item $O$ as the 4D output tensor.
+\end{itemize}
+Moreover, define:
+\begin{itemize}
+	\item $U$ as the 3D unfolded tensor of $I$.
+	\item $\tilde{W}$ the 2D reshaped $W$ according to the view \texttt{(out\_channels, -1)}.
+	\item $\tilde{B}$ the  3D reshaped $B$ according to the view \texttt{(1, -1, 1)}.
+\end{itemize}
+\vspace{3mm}
+Therefore, it holds:
+\begin{equation}\label{original_law}
+	\tilde{O} = \tilde{W} \otimes U + \tilde{B}
+\end{equation}
+Explicitly in coordinates:
+\begin{equation} \label{original_product}
+	\tilde{O}_{p,q,r} = \sum_m \tilde{W}_{q,m} U_{p,m,r} + \tilde{B}_{0,q,0}
+\end{equation}
+(in the instructions, the tensor product is directly calculated with \texttt{@}).
+
+\subsection{Gradient with respect to input}
+Suppose $G$ is the gradient of the loss with respect to the output (therefore, same shape of $O$).  We first need to pass from $G$ to $\tilde{G}$ that is the same but with the same shape of $\tilde{O}$. Then, the $(i,j,k)$ component of the gradient with respect to the unfolded input is: 
+
+\begin{equation} \label{grad_input}
+	\frac{\partial \mathcal{L}}{\partial U_{i,j,k}} = \sum_{p,q,r} \frac{\partial \mathcal{L}}{\partial \tilde{O}_{p,q,r}} \frac{\partial \tilde{O}_{p,q,r}}{\partial U_{i,j,k}} \overset{Def }{=} \sum_{p,q,r} \tilde{G}_{p,q,r} \frac{\partial \tilde{O}_{p,q,r}}{\partial U_{i,j,k}} \overset{(\ref{original_product}) }{=} \sum_{p,q,r} \tilde{G}_{p,q,r} \tilde{W}_{q,j}\delta_{p,i} \delta_{r,k} = \sum_{q} \tilde{G}_{i,q,k} \tilde{W}_{q,j}
+\end{equation}
+This product can be calculated with some \texttt{transpose} operations and then \texttt{torch.tensordot} or \texttt{@} (paying attention in the latter case). In this way, we get the derivative with respect to the unfolded input. To get the gradient with respect to the original input, since the unfold operation is a multiple copy operation, it is just needed to sum different components using the principle of \emph{weight sharing}. Fortunately, this is already done by the \texttt{fold} operation as you can check in \texttt{check\_fold\_as\_weight\_sharing.py}. 
+\begin{equation*}
+	\boxed{G \overset{\texttt{view}}{\rightarrow} \tilde{G} \overset{(\ref{grad_input})}{\rightarrow} \frac{ \partial \mathcal{L}}{ \partial U} \overset{\texttt{fold}}{\rightarrow} \frac{ \partial \mathcal{L}}{ \partial I} }
+\end{equation*}
+
+
+\subsection{Gradient with respect to weight}
+The $(i,j)$ component of the gradient with respect to the reshaped weight $\tilde{W}$ is: 
+
+\begin{equation} \label{grad_weight}
+	\frac{\partial \mathcal{L}}{\partial \tilde{W}_{i,j}} = \sum_{p,q,r} \frac{\partial \mathcal{L}}{\partial \tilde{O}_{p,q,r}} \frac{\partial \tilde{O}_{p,q,r}}{\partial \tilde{W}_{i,j}} \overset{Def }{=} \sum_{p,q,r} \tilde{G}_{p,q,r} \frac{\partial \tilde{O}_{p,q,r}}{\partial \tilde{W}_{i,j}} \overset{(\ref{original_product}) }{=} \sum_{p,q,r} \tilde{G}_{p,q,r} U_{p,j,r} \delta_{q,i} = \sum_{p,r} \tilde{G}_{p,i,r} U_{p,j,r}
+\end{equation}
+Again, this product can be calculated with \texttt{torch.tensordot} or \texttt{@} (paying attention in this latter case). To get instead the derivative with respect to the original weight, it is just needed to reshape this gradient to the original weight shape.
+\begin{equation*}
+	\boxed{G \overset{\texttt{view}}{\rightarrow} \tilde{G} \overset{(\ref{grad_weight})}{\rightarrow} \frac{ \partial \mathcal{L}}{ \partial \tilde{W}} \overset{\texttt{view}}{\rightarrow} \frac{ \partial \mathcal{L}}{ \partial W} }
+\end{equation*}
+
+
+\subsection{Gradient with respect to bias}
+Since $\tilde{B}$ is just the reshaped version of $B$ with view \texttt{(1,-1,1)} we can directly compute the gradient with respect to $B$ as:
+\begin{equation*}
+	\frac{\partial \mathcal{L}}{\partial B_{i}} = \frac{\partial \mathcal{L}}{\partial \tilde{B}_{0,i,0}} 
+\end{equation*}
+Then,
+\begin{equation} \label{grad_bias}
+	\frac{\partial \mathcal{L}}{\partial B_{i}} = \frac{\partial \mathcal{L}}{\partial \tilde{B}_{0,i,0}} = \sum_{p,q,r} \frac{\partial \mathcal{L}}{\partial \tilde{O}_{p,q,r}} \frac{\partial \tilde{O}_{p,q,r}}{\partial \tilde{B}_{0,i,0}} \overset{Def }{=} \sum_{p,q,r} \tilde{G}_{p,q,r} \frac{\partial \tilde{O}_{p,q,r}}{\partial \tilde{B}_{0,i,0}} \overset{(\ref{original_product}) }{=} \sum_{p,q,r} \tilde{G}_{p,q,r}  \delta_{q,i} = \sum_{p,r} \tilde{G}_{p,i,r}
+\end{equation}
+This term can be calculated with \texttt{Tensor.sum()}. 
+\begin{equation*}
+	\boxed{G \overset{\texttt{view}}{\rightarrow} \tilde{G} \overset{(\ref{grad_bias})}{\rightarrow} \frac{ \partial \mathcal{L}}{ \partial B}}
+\end{equation*}
+
+
+
+\end{document}

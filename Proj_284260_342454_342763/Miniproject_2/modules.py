@@ -85,6 +85,9 @@ class Conv2d(Module):
         unfolded = unfold(input[0], kernel_size=self.kernel_size, stride=self.stride)
         self.input = input[0]
         self.x = self.weight.view(self.output_channels, -1) @ unfolded + self.bias.view(1,-1,1)
+        print (self.bias.shape)
+        print (self.weight.view(self.output_channels, -1).shape)
+        
 
         H, W = self.compute_output_shape(input[0])
 
