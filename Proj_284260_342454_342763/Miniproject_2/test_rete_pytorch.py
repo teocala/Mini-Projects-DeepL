@@ -12,7 +12,7 @@ def train (model , train_input , train_target ) -> None :
     batch_size = 100
     epochs = 10
     criterion = nn.MSELoss()
-    optimizer = torch.optim.SGD(model.parameters(), lr=0.0001)
+    optimizer = torch.optim.SGD(model.parameters(), lr=0.01)
 
 
     for epoch in range(epochs):
@@ -71,9 +71,9 @@ def main():
 
     # model = nn.Sequential( # N, 3, 32, 32
     #         nn.Conv2d(in_channels=3, out_channels=32, kernel_size=(3,3),stride=2),
-    #         nn.ReLU()
+    #         nn.Sigmoid(),
     # )
-    # train_target_test = torch.randn((500,32,15,15)) # Just to work with the right dimension with one Conv2D
+    # train_target_test = torch.randn((train_size,3,32,32)) # Just to work with the right dimension with one Conv2D
 
     print('Training the model...')
     train(model, train_input, train_target)
