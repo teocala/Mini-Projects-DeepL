@@ -7,7 +7,7 @@ import sys
 import matplotlib.pyplot as plt
 from model import Model
 
-#os.chdir(sys.path[0])
+os.chdir(sys.path[0])
 
 
 def main():
@@ -22,7 +22,7 @@ def main():
 
 
     # Select a subset to speed up computations
-    train_size = 5000
+    train_size = 1000
     train_input = train_input[:train_size]
     train_target = train_target[:train_size]
     test_input = test_input[:train_size]

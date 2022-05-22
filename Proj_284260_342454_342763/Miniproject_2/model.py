@@ -36,17 +36,17 @@ class Model () :
     def __init__ ( self ) -> None :
         ## instantiate model + optimizer + loss function + any other stuff you need
         self.model = Sequential(# N, 3, 32, 32
-            Conv2d(input_channels = 3, output_channels = 32, kernel_size = (5,5), stride = 2), # N, 32, 14, 14
+            Conv2d(input_channels = 3, output_channels = 32, kernel_size = (3,3), stride = 2), # N, 32, 14, 14
             ReLU(),
-            Conv2d(input_channels = 32, output_channels = 32, kernel_size = (3,3), stride = 2), # N, 32, 6, 6
+            Conv2d(input_channels = 32, output_channels = 32, kernel_size = (1,1), stride = 2), # N, 32, 8, 8
             ReLU(),
-            NearestUpsampling(scale_factor = 3, input_channels = 32, output_channels = 32, kernel_size = (2,2), stride = 1), #  N, 32, 17, 17
+            NearestUpsampling(scale_factor = 2, input_channels = 32, output_channels = 32, kernel_size = (1,1), stride = 1), #  N, 32, 16, 16
             ReLU(),
-            NearestUpsampling(scale_factor = 2, input_channels = 32, output_channels = 3, kernel_size = (3,3), stride = 1), # N, 3, 32, 32
+            NearestUpsampling(scale_factor = 2, input_channels = 32, output_channels = 3, kernel_size = (1,1), stride = 1), # N, 3, 32, 32
             Sigmoid()
         )
         self.criterion = MSE()
-        self.optimizer = SGD(self.model.param(), lr=0.000001)
+        self.optimizer = SGD(self.model.param(), lr=0.00001)
 
     def load_pretrained_model ( self ) -> None :
         ## This loads the parameters saved in bestmodel .pth into the model
@@ -57,8 +57,8 @@ class Model () :
         #: train˙input : tensor of size (N, C, H, W) containing a noisy version of the images.
         #: train˙target : tensor of size (N, C, H, W) containing another noisy version of the same images , which only differs from the input by their noise .
         set_grad_enabled(False)
-        batch_size = 500
-        epochs = 100
+        batch_size = 100
+        epochs = 10
 
         # train_target_test = torch.randn((500,32,15,15)) # Just to work with the right dimension with one Conv2D
 

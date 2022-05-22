@@ -10,6 +10,7 @@ from torch.nn.functional import fold, unfold
 # fold/unfold to combine tensor blocks/batches (see end of projdescription)
 
 import torch #TO REMOVE
+import numpy as np
 
 # the code should work without autograd, don't touch it
 from torch import set_grad_enabled
@@ -85,8 +86,8 @@ class Conv2d(Module):
         unfolded = unfold(input[0], kernel_size=self.kernel_size, stride=self.stride)
         self.input = input[0]
         self.x = self.weight.view(self.output_channels, -1) @ unfolded + self.bias.view(1,-1,1)
-        print (self.bias.shape)
-        print (self.weight.view(self.output_channels, -1).shape)
+        # print (self.bias.shape)
+        # print (self.weight.view(self.output_channels, -1).shape)
         
 
         H, W = self.compute_output_shape(input[0])
@@ -236,14 +237,22 @@ class MSE(Module):
         self.x = Tensor()
         self.target = Tensor()
         self.gradx = Tensor()
+        self.scaling_factor = 1
     
     def forward(self, *input):
         self.target = input[1]
         self.x = input[0]
-        return pow(input[0]-input[1],2).sum() / self.x.shape[0]
+        
+        self.scaling_factor = 1
+
+        for i in self.x.shape:
+            self.scaling_factor *= i
+        # loss = pow(input[0]-input[1],2).sum() / self.x.shape[0]
+        loss = (input[0]-input[1]).pow(2).sum() / self.scaling_factor
+        return loss
         
     def backward(self):
-        self.gradx = 2/self.x.shape[0] * (self.x-self.target)
+        self.gradx = 2 * (self.x-self.target) / self.scaling_factor
         return self.gradx
     
     
