@@ -4,8 +4,7 @@ from model import *
 import os
 import sys
 
-import matplotlib.pyplot as plt
-from model import Model
+import matplotlib.pyplot as plt #TO REMOVE
 
 os.chdir(sys.path[0])
 

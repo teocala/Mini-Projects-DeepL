@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from torch import empty, cat, arange, Tensor
+from torch import empty, cat, arange, Tensor, tensordot
 from torch.nn.functional import fold, unfold
 # ATTENTION: DO NOT ADD ANY OTHER LIBRARY (see rules)
 
@@ -9,10 +9,8 @@ from torch.nn.functional import fold, unfold
 # torch.arange to create intervals
 # fold/unfold to combine tensor blocks/batches (see end of projdescription)
 
-import torch #TO REMOVE
-import numpy as np
 
-# the code should work without autograd, don't touch it
+# the code should work without autograd
 from torch import set_grad_enabled
 set_grad_enabled(False)
 
@@ -101,7 +99,7 @@ class Conv2d(Module):
         self.gradoutput = gradwrtoutput[0]
         G = self.gradoutput.view(self.x_shape).transpose_(1,2)
         W = self.weight.view(self.output_channels, -1)
-        gradux = torch.tensordot(G,W, dims=1)
+        gradux = tensordot(G,W, dims=1)
         gradux = gradux.transpose_(1,2)
 
         folded = fold(gradux, self.input.shape[2:], kernel_size=self.kernel_size, stride=self.stride) #derivative w.r.t. x
@@ -116,7 +114,7 @@ class Conv2d(Module):
             G = self.gradoutput.view(self.x_shape).transpose_(0,1)
             U = unfolded.transpose_(1,2)
             
-            self.dldw = torch.tensordot(G,U,dims=2)
+            self.dldw = tensordot(G,U,dims=2)
             self.dldw = self.dldw.view(self.weight.shape)
             self.dldb = self.gradoutput.view(self.x_shape).sum(dim=[0,2]) # again weight sharing
             self.dldb = self.dldb.view(self.bias.shape)
@@ -269,10 +267,9 @@ class SGD(Module):
         for module in model.args:
             rhs = []
             for p in module.param():
-                a = torch.empty(p[0].shape)
+                a = empty(p[0].shape)
                 a.copy_(p[0])
                 rhs.append(a - self.lr*p[1])
-                #print (torch.mean(abs(a)))
                 
             module.update_params(rhs)
 

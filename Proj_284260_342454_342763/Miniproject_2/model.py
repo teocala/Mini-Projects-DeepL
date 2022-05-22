@@ -11,11 +11,9 @@ from modules import *
 # fold/unfold to combine tensor blocks/batches (see end of projdescription)
 
 
-# the code should work without autograd, don't touch it
+# the code should work without autograd
 from torch import set_grad_enabled
 set_grad_enabled(False)
-
-import torch # TO REMOVE
 
 # REFERENCE STRUCTURE:
 """
@@ -44,11 +42,9 @@ class Model () :
             ReLU(),
             NearestUpsampling(scale_factor = 2, input_channels = 32, output_channels = 3, kernel_size = (1,1), stride = 1), # N, 3, 32, 32
             Sigmoid()
-            # Conv2d(input_channels = 3, output_channels = 32, kernel_size = (3,3), stride = 2), # N, 32, 14, 14
-            # ReLU(),
         )
         self.criterion = MSE()
-        self.optimizer = SGD(self.model.param(), lr=0.01)
+        self.optimizer = SGD(self.model.param(), lr=0.1)
 
     def load_pretrained_model ( self ) -> None :
         ## This loads the parameters saved in bestmodel .pth into the model
@@ -67,7 +63,6 @@ class Model () :
         mu, std = train_input.mean(), train_input.std()
         train_input.sub_(mu).div_(std)
 
-        # train_target_test = torch.randn((1000,3,32,32)) # Just to work with the right dimension with one Conv2D
 
         for epoch in range(epochs):
             total_loss = 0
@@ -78,8 +73,6 @@ class Model () :
                 gradx = self.criterion.backward() #loss w.r.t output of net
                 self.gradx = self.model.backward(gradx) #loss w.r.t input of net
                 self.optimizer.step(self.model)
-            # for p in self.model.param():
-            #     print(f"p: {p[0]}", f"grad_p : {p[1]}")
             print(f'Epoch {epoch}/{epochs-1} Training Loss {total_loss}')
 
 
