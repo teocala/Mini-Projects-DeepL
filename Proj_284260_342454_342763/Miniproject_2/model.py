@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from torch import empty, cat, arange, Tensor
-from torch.nn.functional import fold, unfold
+from torch import Tensor
 from modules import *
 # ATTENTION: DO NOT ADD ANY OTHER LIBRARY (see rules)
 
@@ -44,7 +43,7 @@ class Model () :
             Sigmoid()
         )
         self.criterion = MSE()
-        self.optimizer = SGD(self.model.param(), lr=0.1)
+        self.optimizer = SGD(lr=0.1)
 
     def load_pretrained_model ( self ) -> None :
         ## This loads the parameters saved in bestmodel .pth into the model

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from torch import empty, cat, arange, Tensor, tensordot
+from torch import empty, Tensor, tensordot
 from torch.nn.functional import fold, unfold
 # ATTENTION: DO NOT ADD ANY OTHER LIBRARY (see rules)
 
@@ -258,18 +258,15 @@ class MSE(Module):
     
     
 class SGD(Module):
-    def __init__(self, *parameters, lr) -> None:
+    def __init__(self, lr) -> None:
         super().__init__()
-        self.parameters = parameters[0]
         self.lr = lr
     
     def step(self, model):
         for module in model.args:
             rhs = []
             for p in module.param():
-                a = empty(p[0].shape)
-                a.copy_(p[0])
-                rhs.append(a - self.lr*p[1])
+                rhs.append(p[0] - self.lr*p[1])
                 
             module.update_params(rhs)
 
