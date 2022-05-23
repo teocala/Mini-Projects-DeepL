@@ -75,18 +75,16 @@ class Conv2d(Module):
 
         
     
-    def compute_output_shape(self, *input): # for the time being, not used
+    def compute_output_shape(self, *input):
         H = (input[0].shape[2] - (self.kernel_size[0]-1)-1)/self.stride + 1
         W = (input[0].shape[3] - (self.kernel_size[1]-1)-1)/self.stride + 1
+
         return [int(H), int(W)]
     
     def forward(self, *input): # see end of projdescription
         unfolded = unfold(input[0], kernel_size=self.kernel_size, stride=self.stride)
         self.input = input[0]
-        self.x = self.weight.view(self.output_channels, -1) @ unfolded + self.bias.view(1,-1,1)
-        # print (self.bias.shape)
-        # print (self.weight.view(self.output_channels, -1).shape)
-        
+        self.x = self.weight.view(self.output_channels, -1) @ unfolded + self.bias.view(1,-1,1)        
 
         H, W = self.compute_output_shape(input[0])
 
@@ -116,6 +114,7 @@ class Conv2d(Module):
             
             self.dldw = tensordot(G,U,dims=2)
             self.dldw = self.dldw.view(self.weight.shape)
+
             self.dldb = self.gradoutput.view(self.x_shape).sum(dim=[0,2]) # again weight sharing
             self.dldb = self.dldb.view(self.bias.shape)
 
@@ -235,17 +234,19 @@ class MSE(Module):
         self.x = Tensor()
         self.target = Tensor()
         self.gradx = Tensor()
-        self.scaling_factor = 1
+
+        self.scaling_factor = -1
     
     def forward(self, *input):
         self.target = input[1]
         self.x = input[0]
-        
-        self.scaling_factor = 1
 
-        for i in self.x.shape:
-            self.scaling_factor *= i
-        # loss = pow(input[0]-input[1],2).sum() / self.x.shape[0]
+        if self.scaling_factor == -1: # In that case it has not yet been computed        
+            self.scaling_factor = 1
+            for dim in self.x.shape:
+                self.scaling_factor *= dim
+
+
         loss = (input[0]-input[1]).pow(2).sum() / self.scaling_factor
         return loss
         

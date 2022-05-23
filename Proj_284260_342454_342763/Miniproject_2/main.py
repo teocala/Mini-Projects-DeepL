@@ -58,11 +58,11 @@ def main():
     # images_to_visualize = "train"
     # if (images_to_visualize == "train"):
     #     with torch.no_grad():
-    #         pred = model.predict(train_input).cpu()
+    #         pred = model.predict(train_input).cpu() * 255
     #     train_input = train_input.cpu()
     #     images = train_input
     # elif (images_to_visualize == "test"):
-    #     pred = prediction
+    #     pred = prediction * 255
     #     test_input = test_input.cpu()
     #     images = test_input
     #     pred = pred.cpu()

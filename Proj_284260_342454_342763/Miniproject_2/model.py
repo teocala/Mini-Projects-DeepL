@@ -55,17 +55,17 @@ class Model () :
         #: train˙target : tensor of size (N, C, H, W) containing another noisy version of the same images , which only differs from the input by their noise .
         set_grad_enabled(False)
         batch_size = 100
-        epochs = 10
+        epochs = 5
 
 
         # Normalize for better convergence
         mu, std = train_input.mean(), train_input.std()
-        train_input.sub_(mu).div_(std)
+        train_input_norm = train_input.sub(mu).div(std)
 
 
         for epoch in range(epochs):
             total_loss = 0
-            for batch_input, batch_target in zip(train_input.split(batch_size), train_target.split(batch_size)):
+            for batch_input, batch_target in zip(train_input_norm.split(batch_size), train_target.split(batch_size)):
                 output = self.predict(batch_input)
                 loss = self.criterion.forward(output, batch_target)
                 total_loss += loss
