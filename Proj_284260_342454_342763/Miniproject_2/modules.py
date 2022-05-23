@@ -14,7 +14,6 @@ from torch.nn.functional import fold, unfold
 from torch import set_grad_enabled
 set_grad_enabled(False)
 
-
 # REFERENCE STRUCTURE:
 """
 Sequential (Conv (stride 2),
@@ -121,9 +120,12 @@ class Conv2d(Module):
         return [[self.weight, self.dldw],[self.bias, self.dldb]]
 
     def update_params(self, new_params):
-        self.weight = new_params[0]
-        self.bias = new_params[1]
-    
+        if isinstance(new_params, list):
+            self.weight = new_params[0]
+            self.bias = new_params[1]
+        else:
+            self.weight = new_params['weight']
+            self.bias = new_params['bias']
 
 
 
@@ -165,7 +167,6 @@ class NearestNeighbor(Module):
                 i_output = i * self.scale_factor
                 j_output = j * self.scale_factor
                 grad[:,:,i,j] = gradwrtoutput[0][:,:,i_output:i_output+self.scale_factor,j_output:j_output+self.scale_factor].sum(dim=[2,3])
-
         self.gradx = grad
         return self.gradx
     
@@ -183,7 +184,7 @@ class ReLU(Module):
     def forward(self, *input):
         self.input = input[0]
         output = empty(input[0].shape)
-        output = self.input.where(self.input > 0, 0*self.input)
+        output = self.input.where(self.input >= 0, 0*self.input)
         self.output = output
         return output
         
@@ -220,10 +221,10 @@ class Sigmoid(Module):
         return self.gradx
     
     def sigma(self, *input):
-        return input[0].exp()/(1+ input[0].exp())
+        return 1.0/(1.0 + (-input[0]).exp())
     
     def sigmaprime(self, *input):
-        return self.sigma(input[0])*(1-self.sigma(input[0]))
+        return self.sigma(input[0])*(1.0-self.sigma(input[0]))
     
     
     
