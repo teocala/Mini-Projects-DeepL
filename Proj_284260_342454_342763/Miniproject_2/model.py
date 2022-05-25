@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from torch import Tensor
-from modules import *
+from others.modules import *
 import pickle
 # ATTENTION: DO NOT ADD ANY OTHER LIBRARY (see rules)
 
