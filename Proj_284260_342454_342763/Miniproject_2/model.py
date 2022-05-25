@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 
-from torch import Tensor, load
+from torch import Tensor
 from modules import *
+import pickle
 # ATTENTION: DO NOT ADD ANY OTHER LIBRARY (see rules)
 
 # torch.empty for an empty tensor
@@ -47,7 +48,9 @@ class Model () :
 
     def load_pretrained_model ( self ) -> None :
         ## This loads the parameters saved in bestmodel .pth into the model
-        self = load('./best_model.pth')
+        infile = open("./best_model.pth",'rb')
+        self = pickle.load(infile)
+        infile.close()
         pass
     
 

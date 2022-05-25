@@ -1,5 +1,6 @@
 import torch
 from model import *
+import pickle
 
 import os
 import sys
@@ -44,7 +45,9 @@ def main():
 
     # Save the model
     path_to_model = "./best_model.pth"
-    torch.save(model,path_to_model)
+    outfile = open(path_to_model,'wb')
+    pickle.dump(model, outfile)
+    outfile.close()
 
     # Load the model
     model.load_pretrained_model()
