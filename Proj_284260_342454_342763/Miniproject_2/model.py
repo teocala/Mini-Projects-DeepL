@@ -71,8 +71,10 @@ class Model () :
 
 
         # Normalize for better convergence TOCHECK
-        # mu, std = train_input.mean(), train_input.std()
-        # train_input_norm = train_input.sub(mu).div(std)
+        train_input = train_input.float()
+        train_target = train_target.float()
+        mu, std = train_input.mean(), train_input.std()
+        train_input_norm = train_input.sub(mu).div(std)
 
 
         for epoch in range(num_epochs):
