@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from torch import empty, Tensor, tensordot
+from torch import empty, Tensor
 from torch.nn.functional import fold, unfold
 # ATTENTION: DO NOT ADD ANY OTHER LIBRARY (see rules)
 
@@ -96,7 +96,7 @@ class Conv2d(Module):
         self.gradoutput = gradwrtoutput[0]
         G = self.gradoutput.view(self.x_shape).transpose_(1,2)
         W = self.weight.view(self.output_channels, -1)
-        gradux = tensordot(G,W, dims=1)
+        gradux = G @ W
         gradux = gradux.transpose_(1,2)
 
         folded = fold(gradux, self.input.shape[2:], kernel_size=self.kernel_size, stride=self.stride) #derivative w.r.t. x
@@ -110,8 +110,10 @@ class Conv2d(Module):
             unfolded = unfold(self.input, kernel_size=self.kernel_size, stride=self.stride)
             G = self.gradoutput.view(self.x_shape).transpose_(0,1)
             U = unfolded.transpose_(1,2)
+            G = G.reshape([G.shape[0], -1])
+            U = U.reshape([-1, U.shape[-1]])
             
-            self.dldw = tensordot(G,U,dims=2)
+            self.dldw = G @ U
             self.dldw = self.dldw.view(self.weight.shape)
 
             self.dldb = self.gradoutput.view(self.x_shape).sum(dim=[0,2]) # again weight sharing
@@ -148,6 +150,7 @@ class NearestNeighbor(Module):
         self.input = input[0]
         # Compute the NN output shape from the input size and the scale factor
         self.NN_output_shape = [self.input.shape[0], self.input.shape[1]] + [self.scale_factor * dim for dim in self.input.shape[2:]]
+        
         self.NN_interp = empty(self.NN_output_shape)
 
         # Apply NN interpolation

@@ -20,8 +20,8 @@ def train (model1, model2 , train_input , train_target ) -> None :
     epochs = 10
     criterion1 = nn.MSELoss()
     criterion2 = mo.MSE()
-    optimizer1 = torch.optim.SGD(model1.parameters(), lr=0.0001)
-    optimizer2 = mo.SGD(lr=0.0001)
+    optimizer1 = torch.optim.SGD(model1.parameters(), lr=0.001)
+    optimizer2 = mo.SGD(lr=0.001)
 
 
 
@@ -35,10 +35,10 @@ def train (model1, model2 , train_input , train_target ) -> None :
         total_loss1 = 0
         total_loss2 = 0
         for input, targets in zip(train_input.split(batch_size), train_target.split(batch_size)):
-            #input = convert_dim(input, [batch_size, 32, 16, 16])
+            #input = convert_dim(input, [batch_size, 32, 20, 20])
             output1 = model1(input)
             output2 = model2.forward(input)
-            #targets = convert_dim(targets, [batch_size, 3, 30, 30])
+            #targets = convert_dim(targets, [batch_size, 3, 24, 24])
             
             loss1 = criterion1(output1, targets)
             loss2 = criterion2.forward(output2, targets)
@@ -102,7 +102,7 @@ def main():
             x = self.UpsamplingNearest2d(input)
             return self.Conv2d(x)
       
-            
+     
     modelPT = nn.Sequential( # N, 3, 32, 32
         nn.Conv2d(in_channels=3, out_channels=32, kernel_size=(3,3),stride=2), # N, 32, 14, 14
         nn.ReLU(),
@@ -124,6 +124,7 @@ def main():
         mo.NearestUpsampling(scale_factor = 2, input_channels = 32, output_channels = 3, kernel_size = (1,1), stride = 1), # N, 3, 32, 32
         mo.Sigmoid()
     )
+    
     
 
     print('Training the models...')
