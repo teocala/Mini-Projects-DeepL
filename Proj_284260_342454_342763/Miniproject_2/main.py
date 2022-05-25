@@ -41,23 +41,22 @@ def main():
     # Defining and training the model
     model = Model()
     print('Training the model...')
-    model.train(train_input, train_target)
+    # model.train(train_input, train_target)
 
-    # Save the model
-    path_to_model = "./best_model.pth"
-    outfile = open(path_to_model,'wb')
-    pickle.dump(model, outfile)
-    outfile.close()
+    # # # Save the model
+    # model.save_pickle_state()
 
     # Load the model
     model.load_pretrained_model()
+    print(model)
+
 
     model.train(train_input, train_target)
 
     # Testing
-    print('Using the trained model to denoise validation images...')
-    with torch.no_grad():
-        prediction = model.predict(test_input)
+    # print('Using the trained model to denoise validation images...')
+    # with torch.no_grad():
+    #     prediction = model.predict(test_input)
 
 
 

@@ -2,12 +2,6 @@
 
 from torch import empty, Tensor
 from torch.nn.functional import fold, unfold
-# ATTENTION: DO NOT ADD ANY OTHER LIBRARY (see rules)
-
-# torch.empty for an empty tensor
-# torch.cat to concatenate more tensors
-# torch.arange to create intervals
-# fold/unfold to combine tensor blocks/batches (see end of projdescription)
 
 
 # the code should work without autograd
@@ -37,6 +31,8 @@ class Module (object):
         return []
     def update_params(self, new_params):
         pass
+    def load_pickle_state(self, pickled_params):
+        pass
 
 
 
@@ -45,7 +41,7 @@ class Module (object):
     
 class Conv2d(Module):
     
-    def __init__(self, input_channels, output_channels, kernel_size, stride) -> None:
+    def __init__(self, input_channels, output_channels, kernel_size, stride=1) -> None:
         super().__init__()
         
         self.x = Tensor()
@@ -56,7 +52,10 @@ class Conv2d(Module):
         
         self.input_channels = input_channels
         self.output_channels = output_channels
-        self.kernel_size = kernel_size
+        if isinstance(kernel_size, int):
+            self.kernel_size = [kernel_size, kernel_size]
+        else:
+            self.kernel_size = kernel_size
         self.stride = stride
         # default: padding = 0, dilation=1
         
@@ -128,6 +127,12 @@ class Conv2d(Module):
         else:
             self.weight = new_params['weight']
             self.bias = new_params['bias']
+
+    def load_pickle_state(self, pickled_params):
+        self.weight = pickled_params[0][0]
+        self.dldw = pickled_params[0][1]
+        self.bias = pickled_params[1][0]
+        self.dldb = pickled_params[1][1]
 
 
 
@@ -307,6 +312,10 @@ class Sequential(Module):
     def param(self):
         param = [module.param() for module in self.args]
         return param
+
+    def load_pickle_state(self, pickled_params):
+        for module, params in zip(self.args, pickled_params):
+            module.load_pickle_state(params)
     
     
     
@@ -320,4 +329,7 @@ class NearestUpsampling(Sequential):
 
     def update_params(self, new_params): # Update parameters of Convolutional layer 
         self.args[1].update_params(new_params)
+        
+    def load_pickle_state(self, pickled_params): # Recover pickled parameters of Convolutional layer 
+        self.args[1].load_pickle_state(pickled_params)
         
