@@ -21,7 +21,7 @@ def main():
 
 
     # Select a subset to speed up computations
-    train_size = 1000
+    train_size = 500
     train_input = train_input[:train_size]
     train_target = train_target[:train_size]
     test_input = test_input[:train_size]
@@ -40,6 +40,15 @@ def main():
     # Defining and training the model
     model = Model()
     print('Training the model...')
+    model.train(train_input, train_target)
+
+    # Save the model
+    path_to_model = "./best_model.pth"
+    torch.save(model,path_to_model)
+
+    # Load the model
+    model.load_pretrained_model()
+
     model.train(train_input, train_target)
 
     # Testing

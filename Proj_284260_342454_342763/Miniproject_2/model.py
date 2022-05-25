@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from torch import Tensor
+from torch import Tensor, load
 from modules import *
 # ATTENTION: DO NOT ADD ANY OTHER LIBRARY (see rules)
 
@@ -47,6 +47,7 @@ class Model () :
 
     def load_pretrained_model ( self ) -> None :
         ## This loads the parameters saved in bestmodel .pth into the model
+        self = load('./best_model.pth')
         pass
     
 
