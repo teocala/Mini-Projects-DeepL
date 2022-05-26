@@ -34,9 +34,7 @@ def main():
     train_input = train_input.float()
     train_target = train_target.float()
     test_input = test_input.float()
-    test_target = test_target.float() / 255.0
-    mu, std = train_input.mean(), train_input.std()
-    test_input = test_input.sub(mu).div(std)
+    test_target = test_target.float()
 
     
     print(f'Training data of size {train_input.shape}')
@@ -44,7 +42,7 @@ def main():
     # Defining and training the model
     model = Model()
     print('Training the model...')
-    model.train(train_input, train_target, 1)
+    model.train(train_input, train_target, 20)
 
     # Save the model
     model.save_pickle_state()
@@ -58,11 +56,11 @@ def main():
     # Testing
     print('Using the trained model to denoise validation images...')
     with torch.no_grad():
-        prediction = model.predict(test_input)
+        prediction = model.predict(test_input) 
 
 
-    print(f'psnr = {compute_psnr(prediction, test_target)}')
-
+    print(f'psnr = {compute_psnr(prediction / 255.0, test_target / 255.0)}')
+    print(f'reference psnr for input images = {compute_psnr(test_input / 255.0, test_target / 255.0)}')
 
 
 

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from torch import Tensor
+from torch import Tensor, empty
 from others.modules import *
 import pickle
 from pathlib import Path
@@ -27,18 +27,28 @@ Sequential (Conv (stride 2),
 class Model () :
     def __init__ ( self ) -> None :
         ## instantiate model + optimizer + loss function + any other stuff you need
+        # self.model = Sequential(# N, 3, 32, 32           18.6
+        #     Conv2d(input_channels = 3, output_channels = 6, kernel_size = (3,3), stride = 2), # N, 8, 15, 15
+        #     ReLU(),
+        #     Conv2d(input_channels = 6, output_channels = 12, kernel_size = (1,1), stride = 2), # N, 16, 7, 7
+        #     ReLU(),
+        #     NearestUpsampling(scale_factor = 2, input_channels = 12, output_channels = 6, kernel_size = (1,1), stride = 1), #  N, 8, 12, 12
+        #     ReLU(),
+        #     NearestUpsampling(scale_factor = 2, input_channels = 6, output_channels = 3, kernel_size = (1,1), stride = 1), # N, 3, 24, 24
+        #     Sigmoid()
+        # )
         self.model = Sequential(# N, 3, 32, 32
-            Conv2d(input_channels = 3, output_channels = 32, kernel_size = (3,3), stride = 2), # N, 32, 14, 14
+            Conv2d(input_channels = 3, output_channels = 6, kernel_size = (3,3), stride = 2), # N, 8, 15, 15
             ReLU(),
-            Conv2d(input_channels = 32, output_channels = 32, kernel_size = (1,1), stride = 2), # N, 32, 8, 8
+            Conv2d(input_channels = 6, output_channels = 12, kernel_size = (1,1), stride = 2), # N, 16, 7, 7
             ReLU(),
-            NearestUpsampling(scale_factor = 2, input_channels = 32, output_channels = 32, kernel_size = (1,1), stride = 1), #  N, 32, 16, 16
+            NearestUpsampling(scale_factor = 2, input_channels = 12, output_channels = 6, kernel_size = (1,1), stride = 1), #  N, 8, 12, 12
             ReLU(),
-            NearestUpsampling(scale_factor = 2, input_channels = 32, output_channels = 3, kernel_size = (1,1), stride = 1), # N, 3, 32, 32
+            NearestUpsampling(scale_factor = 2, input_channels = 6, output_channels = 3, kernel_size = (1,1), stride = 1), # N, 3, 24, 24
             Sigmoid()
         )
         self.criterion = MSE()
-        self.optimizer = SGD(lr=0.0001)
+        self.optimizer = SGD(lr=0.001)
 
     def save_pickle_state(self):
         ## This saves the states of the modules' parameters in a pickle file
@@ -65,7 +75,7 @@ class Model () :
         #: train˙input : tensor of size (N, C, H, W) containing a noisy version of the images.
         #: train˙target : tensor of size (N, C, H, W) containing another noisy version of the same images , which only differs from the input by their noise .
         set_grad_enabled(False)
-        batch_size = 500
+        batch_size = 20
 
 
         # Normalize for better convergence 
@@ -78,21 +88,29 @@ class Model () :
         for epoch in range(num_epochs):
             total_loss = 0
             nb_batch = 0
-            for batch_input, batch_target in zip(train_input.split(batch_size), train_target.split(batch_size)):
+            for batch_input, batch_target in zip(train_input_norm.split(batch_size), train_target.split(batch_size)):
                 nb_batch += 1
-                if nb_batch % 10 == 0:
+                if nb_batch % 200 == 0:
                     print(f'Epoch {epoch}/{num_epochs-1}, batch {nb_batch}/{int(train_input.shape[0]/batch_size)}')
-                output = self.predict(batch_input)
+                output = self.predict(batch_input, normalize=False)
+                # print(output.shape)
                 loss = self.criterion.forward(output, batch_target)
-                total_loss += loss
+                total_loss += loss / (train_input.shape[0]/batch_size)
                 gradx = self.criterion.backward() #loss w.r.t output of net
                 self.gradx = self.model.backward(gradx) #loss w.r.t input of net
                 self.optimizer.step(self.model)
             print(f'Epoch {epoch}/{num_epochs-1} Training Loss {total_loss}')
 
 
-    def predict ( self , test_input ) -> Tensor:
+    def predict ( self , test_input, normalize=True ) -> Tensor:
         #: test˙input : tensor of size (N1 , C, H, W) that has to be denoised by the trained or the loaded network .
         #: returns a tensor of the size (N1 , C, H, W)
-        y = self.model.forward(test_input)
+        test_input_norm = empty(test_input.shape)
+        test_input_norm.copy_(test_input)
+        if normalize:
+            test_input_norm = test_input_norm.float()
+            mu, std = test_input_norm.mean(), test_input_norm.std()
+            test_input_norm = test_input_norm.sub(mu).div(std)
+
+        y = self.model.forward(test_input_norm) * 255.0
         return y

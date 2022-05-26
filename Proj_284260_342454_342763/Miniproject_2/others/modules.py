@@ -2,7 +2,7 @@
 
 from torch import empty, Tensor
 from torch.nn.functional import fold, unfold
-
+from math import sqrt
 
 # the code should work without autograd
 from torch import set_grad_enabled
@@ -18,8 +18,8 @@ Sequential (Conv (stride 2),
             ReLU,
             Upsampling,
             Sigmoid)
-"""
 
+"""
 
 # ABSTRACT MODULE CLASS (required)
 class Module (object):
@@ -66,11 +66,11 @@ class Conv2d(Module):
         self.dldb = empty((self.output_channels))
 
 
-        # Random initialization 
-        N = self.output_channels * self.input_channels * self.kernel_size[0] * self.kernel_size[1]
-        self.weight.uniform_(-1/(N**0.5), 1/(N**0.5))
-        self.bias.uniform_(-1/(N**0.5), 1/(N**0.5))
-
+        # Random Xavier initialization 
+        N1 = self.input_channels * self.kernel_size[0] * self.kernel_size[1]
+        N2 = self.output_channels * self.kernel_size[0] * self.kernel_size[1]
+        self.weight.uniform_(-1/((N1 + N2)**0.5), 1/((N1 + N2)**0.5))
+        self.bias.uniform_(-1/((N1 + N2)**0.5), 1/((N1 + N2)**0.5))
         
     
     def compute_output_shape(self, *input):
