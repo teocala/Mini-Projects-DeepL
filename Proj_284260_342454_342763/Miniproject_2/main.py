@@ -8,6 +8,8 @@ import matplotlib.pyplot as plt #TO REMOVE
 
 os.chdir(sys.path[0])
 
+def compute_psnr(x, y, max_range=1.0):
+        return 20 * torch.log10(torch.tensor(max_range)) - 10 * torch.log10(((x-y) ** 2).mean((1,2,3))).mean()
 
 def main():
     # Using a GPU if available
@@ -21,7 +23,7 @@ def main():
 
 
     # Select a subset to speed up computations
-    train_size = 1000
+    train_size = 50000
     train_input = train_input[:train_size]
     train_target = train_target[:train_size]
     test_input = test_input[:train_size]
@@ -32,7 +34,9 @@ def main():
     train_input = train_input.float()
     train_target = train_target.float()
     test_input = test_input.float()
-    test_target = test_target.float()
+    test_target = test_target.float() / 255.0
+    mu, std = train_input.mean(), train_input.std()
+    test_input = test_input.sub(mu).div(std)
 
     
     print(f'Training data of size {train_input.shape}')
@@ -40,21 +44,24 @@ def main():
     # Defining and training the model
     model = Model()
     print('Training the model...')
-    # model.train(train_input, train_target, 5)
+    model.train(train_input, train_target, 1)
 
-    # # # Save the model
-    # model.save_pickle_state()
+    # Save the model
+    model.save_pickle_state()
 
     # Load the model
-    model.load_pretrained_model()
+    # model.load_pretrained_model()
 
 
-    model.train(train_input, train_target)
+    # model.train(train_input, train_target)
 
     # Testing
-    # print('Using the trained model to denoise validation images...')
-    # with torch.no_grad():
-    #     prediction = model.predict(test_input)
+    print('Using the trained model to denoise validation images...')
+    with torch.no_grad():
+        prediction = model.predict(test_input)
+
+
+    print(f'psnr = {compute_psnr(prediction, test_target)}')
 
 
 

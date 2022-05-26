@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from torch import Tensor
-from .others.modules import *
+from others.modules import *
 import pickle
 from pathlib import Path
 
@@ -38,14 +38,12 @@ class Model () :
             Sigmoid()
         )
         self.criterion = MSE()
-        self.optimizer = SGD(lr=0.1)
+        self.optimizer = SGD(lr=0.0001)
 
     def save_pickle_state(self):
         ## This saves the states of the modules' parameters in a pickle file
         model_path = Path(__file__).parent / "bestmodel.pth"
         states = self.model.param()
-
-        model_path = Path(__file__).parent / "bestmodel.pth"
         outfile = open(model_path,'wb')
         pickle.dump(states, outfile)
         outfile.close()
@@ -67,10 +65,10 @@ class Model () :
         #: train˙input : tensor of size (N, C, H, W) containing a noisy version of the images.
         #: train˙target : tensor of size (N, C, H, W) containing another noisy version of the same images , which only differs from the input by their noise .
         set_grad_enabled(False)
-        batch_size = 100
+        batch_size = 500
 
 
-        # Normalize for better convergence TOCHECK
+        # Normalize for better convergence 
         train_input = train_input.float()
         train_target = train_target.float()
         mu, std = train_input.mean(), train_input.std()
@@ -79,7 +77,11 @@ class Model () :
 
         for epoch in range(num_epochs):
             total_loss = 0
+            nb_batch = 0
             for batch_input, batch_target in zip(train_input.split(batch_size), train_target.split(batch_size)):
+                nb_batch += 1
+                if nb_batch % 10 == 0:
+                    print(f'Epoch {epoch}/{num_epochs-1}, batch {nb_batch}/{int(train_input.shape[0]/batch_size)}')
                 output = self.predict(batch_input)
                 loss = self.criterion.forward(output, batch_target)
                 total_loss += loss
