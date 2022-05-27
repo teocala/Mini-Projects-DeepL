@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from torch import Tensor, empty
-from others.modules import *
+from .others.modules import *
 import pickle
 from pathlib import Path
 
@@ -26,29 +26,18 @@ Sequential (Conv (stride 2),
 ### For mini - project 2
 class Model () :
     def __init__ ( self ) -> None :
-        ## instantiate model + optimizer + loss function + any other stuff you need
-        # self.model = Sequential(# N, 3, 32, 32           18.6
-        #     Conv2d(input_channels = 3, output_channels = 6, kernel_size = (3,3), stride = 2), # N, 8, 15, 15
-        #     ReLU(),
-        #     Conv2d(input_channels = 6, output_channels = 12, kernel_size = (1,1), stride = 2), # N, 16, 7, 7
-        #     ReLU(),
-        #     NearestUpsampling(scale_factor = 2, input_channels = 12, output_channels = 6, kernel_size = (1,1), stride = 1), #  N, 8, 12, 12
-        #     ReLU(),
-        #     NearestUpsampling(scale_factor = 2, input_channels = 6, output_channels = 3, kernel_size = (1,1), stride = 1), # N, 3, 24, 24
-        #     Sigmoid()
-        # )
         self.model = Sequential(# N, 3, 32, 32
-            Conv2d(input_channels = 3, output_channels = 6, kernel_size = (3,3), stride = 2), # N, 8, 15, 15
+            Conv2d(input_channels = 3, output_channels = 6, kernel_size = (2,2), stride = 2), # N, 6, 16, 16
             ReLU(),
-            Conv2d(input_channels = 6, output_channels = 12, kernel_size = (1,1), stride = 2), # N, 16, 7, 7
+            Conv2d(input_channels = 6, output_channels = 12, kernel_size = (2,2), stride = 2), # N, 12, 8, 8
             ReLU(),
-            NearestUpsampling(scale_factor = 2, input_channels = 12, output_channels = 6, kernel_size = (1,1), stride = 1), #  N, 8, 12, 12
+            NearestUpsampling(scale_factor = 2, input_channels = 12, output_channels = 6, kernel_size = (1,1), stride = 1), #  N, 6, 16, 16
             ReLU(),
-            NearestUpsampling(scale_factor = 2, input_channels = 6, output_channels = 3, kernel_size = (1,1), stride = 1), # N, 3, 24, 24
+            NearestUpsampling(scale_factor = 2, input_channels = 6, output_channels = 3, kernel_size = (1,1), stride = 1), # N, 3, 32, 32
             Sigmoid()
         )
         self.criterion = MSE()
-        self.optimizer = SGD(lr=0.001)
+        self.optimizer = SGD(lr=0.015)
 
     def save_pickle_state(self):
         ## This saves the states of the modules' parameters in a pickle file
@@ -93,7 +82,6 @@ class Model () :
                 if nb_batch % 200 == 0:
                     print(f'Epoch {epoch}/{num_epochs-1}, batch {nb_batch}/{int(train_input.shape[0]/batch_size)}')
                 output = self.predict(batch_input, normalize=False)
-                # print(output.shape)
                 loss = self.criterion.forward(output, batch_target)
                 total_loss += loss / (train_input.shape[0]/batch_size)
                 gradx = self.criterion.backward() #loss w.r.t output of net
