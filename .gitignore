@@ -131,4 +131,3 @@ dmypy.json
 
 # EXTRA
 *.pkl
-bestmodel.pth
