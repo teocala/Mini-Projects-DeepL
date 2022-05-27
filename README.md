@@ -34,6 +34,11 @@ Proj_284260_342454_342763
 
 The file *test_template.py* has been provided by the teaching staff to get an idea of the automatic tests which will be conducted during evaluation.
 ## Miniproject 1
+The relevant pieces of code are in the *Miniproject_1/* folder.
+
+The first part of this project consists in a PyTorch implementation of a *Noise2Noise* model
+
+The report for this part is available in the file *Report_1.pdf*.
 
 ## Miniproject 2
 The relevant pieces of code are in the *Miniproject_2/* folder.
@@ -50,7 +55,7 @@ The second part of this project consists in the direct implementation of the mod
 
 Their implementation can be found in the *others/modules.py* file, and an example of a model built out of them is available in *model.py*. The file *main.py* can be run to start a training sequence for the example model. It is possible to save/load the trained model by calling the relative functions in the **Model()** class. An example is also shown in *main.py*. 
 
-The *others/extra* folders contains a LaTeX file reporting useful formulae for gradient computation in the Convolutional layer, as well as the python script we used to compare our implementation with PyTorch.
+The *others/extra/* folder contains a LaTeX file reporting useful formulae for gradient computation in the Convolutional layer, as well as the python script we used to compare our implementation with PyTorch.
 
 The report for this part is available in the file *Report_2.pdf*.
 
