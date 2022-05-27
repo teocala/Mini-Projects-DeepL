@@ -3,15 +3,18 @@ from torch import nn
 from .others.utilities import *
 from pathlib import Path
 
+
+
+
 ### For mini-project 1
 class Model(nn.Module):
     def __init__(self) -> None:
         ## instantiate model + optimizer + loss function + any other stuff you need
         super().__init__()
 
-
-        self.unet = UNet(3,3)
-        #self.unet = ResUNet(3,3)
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.unet = UNet(3,3).to(self.device)
+        #self.unet = ResUNet(3,3).to(self.device)
 
         self.criterion = nn.MSELoss()
 
@@ -22,8 +25,7 @@ class Model(nn.Module):
     def load_pretrained_model(self ) -> None:
         ## This loads the parameters saved in bestmodel . pth into the model
         model_path = Path(__file__).parent / "bestmodel.pth"
-        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        checkpoint = torch.load(model_path, map_location=device)
+        checkpoint = torch.load(model_path, map_location=self.device)
         self.load_state_dict(checkpoint)
 
 
@@ -37,17 +39,15 @@ class Model(nn.Module):
         print('Training the model...')
 
         # Using a GPU if available
-        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        print("Using {} as device".format(device))
+        print("Using {} as device".format(self.device))
 
         # Convert the data into float type
         train_input = train_input.float()
         train_target = train_target.float()
 
         # Move to the device
-        train_input = train_input.to(device)
-        train_target = train_target.to(device)
-        self.unet = self.unet.to(device)
+        train_input = train_input.to(self.device)
+        train_target = train_target.to(self.device)
 
 
         print("Doing data augmentation")
@@ -80,7 +80,8 @@ class Model(nn.Module):
         
         # like the forward method
 
-        x = self.unet(test_input.float())
+
+        x = self.unet(test_input.float().to(self.device))
         x = torch.clamp(x,0,255)
 
 
