@@ -2,24 +2,11 @@
 
 from torch import empty, Tensor
 from torch.nn.functional import fold, unfold
-from math import sqrt
 
 # the code should work without autograd
 from torch import set_grad_enabled
 set_grad_enabled(False)
 
-# REFERENCE STRUCTURE:
-"""
-Sequential (Conv (stride 2),
-            ReLU,
-            Conv (stride 2),
-            ReLU,
-            Upsampling,
-            ReLU,
-            Upsampling,
-            Sigmoid)
-
-"""
 
 # ABSTRACT MODULE CLASS (required)
 class Module (object):
@@ -320,7 +307,7 @@ class Sequential(Module):
     
     
     
-class NearestUpsampling(Sequential):  
+class Upsampling(Sequential):  
     def __init__(self, scale_factor, input_channels, output_channels, kernel_size, stride) -> None:
         super().__init__(NearestNeighbor(scale_factor), Conv2d(input_channels, output_channels, kernel_size, stride))
         

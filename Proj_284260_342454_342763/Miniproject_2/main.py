@@ -4,7 +4,6 @@ from model import *
 import os
 import sys
 
-import matplotlib.pyplot as plt #TO REMOVE
 
 os.chdir(sys.path[0])
 
@@ -45,7 +44,7 @@ def main():
     model.train(train_input, train_target, 5)
 
     # Save the model
-    # model.save_pickle_state()
+    model.save_pickle_state()
 
     # Load the model
     # model.load_pretrained_model()
@@ -61,41 +60,6 @@ def main():
 
     print(f'psnr = {compute_psnr(prediction / 255.0, test_target / 255.0)}')
     print(f'reference psnr for input images = {compute_psnr(test_input / 255.0, test_target / 255.0)}')
-
-
-
-    # Visual comparison between original images and reconstructions
-    # Just for us, probably we can't use matplotlib
-    # Try to see if there are visualization tools only in Pytorch 
-
-    # # Set "train" if you want to compare the training images, "test" for testing ones
-    # images_to_visualize = "train"
-    # if (images_to_visualize == "train"):
-    #     with torch.no_grad():
-    #         pred = model.predict(train_input).cpu() * 255
-    #     train_input = train_input.cpu()
-    #     images = train_input
-    # elif (images_to_visualize == "test"):
-    #     pred = prediction * 255
-    #     test_input = test_input.cpu()
-    #     images = test_input
-    #     pred = pred.cpu()
-    # else:
-    #     raise RuntimeError("Che cazzo hai messo coglione")
-
-    # n_comparisons = 5
-    # for i in range(n_comparisons):
-    #     f = plt.figure()
-    #     f.add_subplot(1, 2, 1)
-    #     fig1 = plt.imshow(images[i].int().permute(1, 2, 0))
-    #     fig1.axes.get_xaxis().set_visible(False)
-    #     fig1.axes.get_yaxis().set_visible(False)
-    #     f.add_subplot(1, 2, 2)
-    #     fig2 = plt.imshow(pred[i].int().permute(1, 2, 0))
-    #     fig2.axes.get_xaxis().set_visible(False)
-    #     fig2.axes.get_yaxis().set_visible(False)
-    #     plt.show(block=True)
-
 
 
 if __name__ == '__main__':

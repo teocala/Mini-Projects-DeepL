@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from torch import Tensor, empty
-from .others.modules import *
+from others.modules import *
 import pickle
 from pathlib import Path
 
@@ -31,9 +31,9 @@ class Model () :
             ReLU(),
             Conv2d(input_channels = 6, output_channels = 12, kernel_size = (2,2), stride = 2), # N, 12, 8, 8
             ReLU(),
-            NearestUpsampling(scale_factor = 2, input_channels = 12, output_channels = 6, kernel_size = (1,1), stride = 1), #  N, 6, 16, 16
+            Upsampling(scale_factor = 2, input_channels = 12, output_channels = 6, kernel_size = (1,1), stride = 1), #  N, 6, 16, 16
             ReLU(),
-            NearestUpsampling(scale_factor = 2, input_channels = 6, output_channels = 3, kernel_size = (1,1), stride = 1), # N, 3, 32, 32
+            Upsampling(scale_factor = 2, input_channels = 6, output_channels = 3, kernel_size = (1,1), stride = 1), # N, 3, 32, 32
             Sigmoid()
         )
         self.criterion = MSE()
