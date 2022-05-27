@@ -33,10 +33,14 @@ Proj_284260_342454_342763
 ```
 
 The file *test_template.py* has been provided by the teaching staff to get an idea of the automatic tests which will be conducted during evaluation.
-## Miniproject 1
+## Miniproject 1 (PAOLO GUARDA PER FAVORE)
 The relevant pieces of code are in the *Miniproject_1/* folder.
 
-The first part of this project consists in a PyTorch implementation of a *Noise2Noise* model
+The first part of this project consists in a PyTorch implementation of a *Noise2Noise* model. The file *model.py* contains our implementation of a *U-Net* applied to the image denoising problem... TO COMPLETE
+The file *main.py* can be run to start a training sequence for our model and it is possible to load our best performing model from the *bestmodel.pth* file. 
+
+The *others/utilities.py* python file contains several functions and classes that we used to develop our model, such as the *PSNR* evaluation function and the *Double Convolution* block, used in the *U-Net* implementation.
+
 
 The report for this part is available in the file *Report_1.pdf*.
 
