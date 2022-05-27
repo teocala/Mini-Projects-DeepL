@@ -43,8 +43,8 @@ def main():
     print('Training the model...')
     model.train(train_input, train_target, 5)
 
-    # Save the model
-    model.save_pickle_state()
+    # # Save the model
+    # model.save_pickle_state()
 
     # Load the model
     # model.load_pretrained_model()
