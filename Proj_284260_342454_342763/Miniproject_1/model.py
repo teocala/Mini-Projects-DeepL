@@ -32,7 +32,7 @@ class Model(nn.Module):
         # : train˙target : tensor of size (N , C , H , W ) containing another noisy version of the
         # same images , which only differs from the input by their noise.
 
-        batch_size = 20
+        batch_size = 10
 
         print('Training the model...')
 

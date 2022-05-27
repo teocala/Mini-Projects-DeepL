@@ -34,7 +34,7 @@ def main():
     # Defining and training the model
     model = Model()
 
-    nb_epochs = 10
+    nb_epochs = 30
     model.train(train_input, train_target, num_epochs=nb_epochs)
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
