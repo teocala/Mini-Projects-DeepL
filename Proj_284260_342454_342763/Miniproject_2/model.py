@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from torch import Tensor, empty
-from others.modules import *
+from .others.modules import *
 import pickle
 from pathlib import Path
 

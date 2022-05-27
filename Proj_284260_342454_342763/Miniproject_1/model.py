@@ -22,7 +22,8 @@ class Model(nn.Module):
     def load_pretrained_model(self ) -> None:
         ## This loads the parameters saved in bestmodel . pth into the model
         model_path = Path(__file__).parent / "bestmodel.pth"
-        checkpoint = torch.load(model_path)
+        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        checkpoint = torch.load(model_path, map_location=device)
         self.load_state_dict(checkpoint)
 
 
@@ -68,7 +69,7 @@ class Model(nn.Module):
 
             total_loss /= 3*train_input.size(0)
 
-            print(f'Epoch {epoch}/{num_epochs - 1} Training Loss {total_loss}  PSNR {error} DB' )
+            print(f'Epoch {epoch}/{num_epochs - 1} Training Loss {total_loss}' )
 
 
     def predict(self, test_input) -> torch.Tensor:
