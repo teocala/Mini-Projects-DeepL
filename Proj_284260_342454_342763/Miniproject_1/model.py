@@ -54,6 +54,7 @@ class Model(nn.Module):
         trainset = MyData(train_input,train_target)
         trainloader = DataLoader(trainset,batch_size,shuffle=True,num_workers=0,collate_fn=collate_batch)
 
+        torch.set_grad_enabled(True)
 
         for epoch in range(num_epochs):
             total_loss = 0
